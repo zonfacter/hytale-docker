@@ -23,7 +23,14 @@ chown -R hytale:hytale ${HYTALE_DIR}/logs || true
 # Try to fetch downloader if not present
 echo "[entrypoint] Checking Hytale downloader..."
 if [ -f "${HYTALE_DIR}/.downloader/fetch.sh" ]; then
-    gosu hytale bash "${HYTALE_DIR}/.downloader/fetch.sh" || true
+    if gosu hytale bash "${HYTALE_DIR}/.downloader/fetch.sh"; then
+        echo "[entrypoint] Downloader check completed successfully"
+    else
+        EXIT_CODE=$?
+        echo "[entrypoint] Downloader fetch script exited with code ${EXIT_CODE}"
+        echo "[entrypoint] This is normal if downloader is not yet available"
+        echo "[entrypoint] See setup instructions in dashboard at http://localhost:${DASHBOARD_PORT}/setup"
+    fi
 fi
 
 # Create log directory if not exists

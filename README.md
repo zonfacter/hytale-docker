@@ -215,6 +215,11 @@ Install mods directly from CurseForge:
 
 ## Troubleshooting
 
+### Downloader not found
+- **Manual setup**: Copy `hytale-downloader-linux-amd64` to `./data/downloader/`
+- **Automatic setup**: Set `HYTALE_DOWNLOADER_URL` in `docker-compose.yml` to your hosted downloader URL
+- Check container logs: `docker-compose logs hytale` to see fetch attempts
+
 ### OAuth link doesn't appear
 - Click "Refresh Log" in the setup wizard
 - Check if downloader file exists in `./data/downloader/`

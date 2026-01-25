@@ -6,9 +6,11 @@
 
 set -e
 
+# Configuration
 DOWNLOADER_DIR="${DOWNLOADER_DIR:-/opt/hytale-server/.downloader}"
 DOWNLOADER_BIN="${DOWNLOADER_BIN:-${DOWNLOADER_DIR}/hytale-downloader-linux-amd64}"
 DOWNLOADER_URL="${HYTALE_DOWNLOADER_URL:-}"
+MIN_FILE_SIZE="${MIN_FILE_SIZE:-1000000}"  # Minimum expected file size (1MB)
 
 log() {
     echo "[fetch-downloader] $1"
@@ -84,11 +86,20 @@ if [ ! -f "$DOWNLOADER_BIN" ]; then
     exit 1
 fi
 
-# Check file size (should be at least 1MB for a valid binary)
-FILE_SIZE=$(stat -c%s "$DOWNLOADER_BIN" 2>/dev/null || stat -f%z "$DOWNLOADER_BIN" 2>/dev/null || echo "0")
-if [ "$FILE_SIZE" -lt 1000000 ]; then
-    log "✗ Downloader-Datei ist zu klein (${FILE_SIZE} bytes)"
-    log "✗ Downloader file is too small (${FILE_SIZE} bytes)"
+# Check file size (should be at least MIN_FILE_SIZE for a valid binary)
+# Try GNU stat first, then BSD stat, with proper error handling
+FILE_SIZE=0
+if stat --version >/dev/null 2>&1; then
+    # GNU stat
+    FILE_SIZE=$(stat -c%s "$DOWNLOADER_BIN" 2>/dev/null || echo "0")
+else
+    # BSD stat (macOS)
+    FILE_SIZE=$(stat -f%z "$DOWNLOADER_BIN" 2>/dev/null || echo "0")
+fi
+
+if [ "$FILE_SIZE" -lt "$MIN_FILE_SIZE" ]; then
+    log "✗ Downloader-Datei ist zu klein (${FILE_SIZE} bytes, erwartet: >${MIN_FILE_SIZE})"
+    log "✗ Downloader file is too small (${FILE_SIZE} bytes, expected: >${MIN_FILE_SIZE})"
     log "Möglicherweise ungültige URL oder Fehlerseite heruntergeladen"
     log "Possibly invalid URL or error page downloaded"
     rm -f "$DOWNLOADER_BIN"
