@@ -91,8 +91,22 @@ echo ""
 # If supervisord is being started, use the config from writable location
 if [ "$1" = "supervisord" ] || [ "$1" = "/usr/bin/supervisord" ]; then
     shift  # Remove 'supervisord' from arguments
+    # Filter out any existing -c argument and its value
+    ARGS=()
+    while [ $# -gt 0 ]; do
+        if [ "$1" = "-c" ]; then
+            shift 2  # Skip -c and its argument
+        else
+            ARGS+=("$1")
+            shift
+        fi
+    done
     # Start supervisord with config from writable location
-    exec supervisord -c "${SUPERVISOR_CONFIG}" "$@"
+    if [ ${#ARGS[@]} -gt 0 ]; then
+        exec supervisord -c "${SUPERVISOR_CONFIG}" "${ARGS[@]}"
+    else
+        exec supervisord -c "${SUPERVISOR_CONFIG}"
+    fi
 else
     exec "$@"
 fi
