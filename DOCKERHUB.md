@@ -123,7 +123,8 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
-| `1.3.0`, `1.3` | Java 24 support (required for AOTCache) |
+| `1.4.0`, `1.4` | Runtime settings (CF_API_KEY, DOWNLOADER_URL) |
+| `1.3.0`, `1.3` | Java 24 + Debian Trixie |
 | `1.2.0`, `1.2` | Full Docker dashboard compatibility |
 | `1.1.0`, `1.1`, `1` | Automatic downloader feature |
 | `1.0.0`, `1.0` | Initial release |
@@ -279,7 +280,8 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
-| `1.3.0`, `1.3` | Java 24 Support (benötigt für AOTCache) |
+| `1.4.0`, `1.4` | Runtime Settings (CF_API_KEY, DOWNLOADER_URL) |
+| `1.3.0`, `1.3` | Java 24 + Debian Trixie |
 | `1.2.0`, `1.2` | Volle Docker Dashboard-Kompatibilität |
 | `1.1.0`, `1.1`, `1` | Automatischer Downloader |
 | `1.0.0`, `1.0` | Erstveröffentlichung |
