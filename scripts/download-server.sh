@@ -107,6 +107,12 @@ if [ -f "Server/HytaleServer.jar" ] && [ -f "Assets.zip" ]; then
     log "════════════════════════════════════════════════════════════════"
     log ""
 
+    # Make start.sh executable (Hytale package includes its own start.sh)
+    if [ -f "start.sh" ]; then
+        chmod +x start.sh
+        log "✓ start.sh ausführbar gemacht / start.sh made executable"
+    fi
+
     # Signal to supervisord to enable server
     touch "$EXTRACT_PATH/.server_installed"
 
