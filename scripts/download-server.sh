@@ -106,15 +106,28 @@ if [ -f "Server/HytaleServer.jar" ] && [ -f "Assets.zip" ]; then
     log "INSTALLATION ERFOLGREICH / INSTALLATION SUCCESSFUL"
     log "════════════════════════════════════════════════════════════════"
     log ""
-    log "Server kann jetzt gestartet werden!"
-    log "Server can now be started!"
-    log ""
-    log "Bitte das Dashboard neu laden."
-    log "Please reload the Dashboard."
-    log ""
 
     # Signal to supervisord to enable server
     touch "$EXTRACT_PATH/.server_installed"
+
+    # Try to start the server via supervisorctl
+    log "Starte Server automatisch / Starting server automatically..."
+    if supervisorctl start hytale-server 2>&1 | tee -a "$LOG_FILE"; then
+        log ""
+        log "✓ Server gestartet / Server started"
+        log ""
+    else
+        log ""
+        log "⚠ Konnte Server nicht automatisch starten"
+        log "⚠ Could not start server automatically"
+        log "Bitte manuell starten / Please start manually:"
+        log "  supervisorctl start hytale-server"
+        log ""
+    fi
+
+    log "Bitte das Dashboard neu laden."
+    log "Please reload the Dashboard."
+    log ""
 
     exit 0
 else
