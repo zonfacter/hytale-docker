@@ -73,6 +73,18 @@ def apply_patches(dashboard_dir: Path):
             # Insert after the first occurrence in get_logs
             content = parts[0] + marker + wrapper + parts[1]
     
+    # Patch the get_backup_frequency function to avoid systemd in Docker
+    old_backup_func = 'def get_backup_frequency() -> int:\n    """Read current backup frequency from hytale.service (or override)."""'
+    if old_backup_func in content and "DOCKER_MODE" in content:
+        new_backup_func = 'def get_backup_frequency_systemd() -> int:\n    """Read current backup frequency from hytale.service (or override)."""'
+        content = content.replace(old_backup_func, new_backup_func)
+        
+        wrapper = '\n\ndef get_backup_frequency() -> int:\n    """Get backup frequency (Docker-aware)."""\n    if DOCKER_MODE:\n        from docker_overrides import get_backup_frequency as docker_get_backup_frequency\n        return docker_get_backup_frequency()\n    return get_backup_frequency_systemd()\n\n'
+        
+        marker = 'def build_exec_start'
+        if marker in content:
+            content = content.replace(marker, wrapper + marker, 1)
+    
     # Patch the api_server_action function to use supervisorctl
     old_allowed = '    allowed = {\n        "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],\n        "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],\n        "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],\n    }'
     if old_allowed in content and "DOCKER_MODE" in content:
