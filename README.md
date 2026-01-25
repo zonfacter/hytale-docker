@@ -1,6 +1,7 @@
 # Hytale Docker
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://www.docker.com/)
+[![Docker Hub](https://img.shields.io/docker/v/zonfacter/hytale-docker?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/zonfacter/hytale-docker)
+[![Docker Pulls](https://img.shields.io/docker/pulls/zonfacter/hytale-docker?logo=docker)](https://hub.docker.com/r/zonfacter/hytale-docker)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Hytale](https://img.shields.io/badge/Hytale-Server-orange)](https://hytale.com/)
 
@@ -24,6 +25,33 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 ---
 
 ## Quick Start
+
+### Option 1: Using Docker Hub (Recommended)
+
+```bash
+# Pull image
+docker pull zonfacter/hytale-docker:latest
+
+# Create data directory
+mkdir -p hytale-data/{universe,mods,backups,downloader}
+
+# Run container
+docker run -d \
+  --name hytale-server \
+  -p 8088:8088 \
+  -p 5520:5520/udp \
+  -v ./hytale-data/universe:/opt/hytale-server/universe \
+  -v ./hytale-data/mods:/opt/hytale-server/mods \
+  -v ./hytale-data/backups:/opt/hytale-server/backups \
+  -v ./hytale-data/downloader:/opt/hytale-server/.downloader \
+  -e DASH_PASS=changeme \
+  zonfacter/hytale-docker:latest
+
+# Open dashboard
+# http://localhost:8088/setup
+```
+
+### Option 2: Using Docker Compose
 
 ```bash
 # Clone repository
