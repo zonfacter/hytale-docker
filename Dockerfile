@@ -29,22 +29,30 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PUID=1000 \
     PGID=1000
 
-# Install dependencies
+# Install dependencies and Eclipse Temurin Java 21
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Java for Hytale Server
-    openjdk-21-jre-headless \
+    # Utilities first (needed for adding repo)
+    curl \
+    wget \
+    gnupg \
+    ca-certificates \
     # Python for Dashboard
     python3 \
     python3-venv \
     python3-pip \
-    # Utilities
-    curl \
-    wget \
+    # Other utilities
     unzip \
     git \
     procps \
     supervisor \
     gosu \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Eclipse Temurin Java 21 (Adoptium)
+RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends temurin-21-jre \
     && rm -rf /var/lib/apt/lists/*
 
 # Create users and directories
