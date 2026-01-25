@@ -20,6 +20,12 @@ chown -R hytale:hytale ${HYTALE_DIR}/backups || true
 chown -R hytale:hytale ${HYTALE_DIR}/.downloader || true
 chown -R hytale:hytale ${HYTALE_DIR}/logs || true
 
+# Try to fetch downloader if not present
+echo "[entrypoint] Checking Hytale downloader..."
+if [ -f "${HYTALE_DIR}/.downloader/fetch.sh" ]; then
+    gosu hytale bash "${HYTALE_DIR}/.downloader/fetch.sh" || true
+fi
+
 # Create log directory if not exists
 mkdir -p ${HYTALE_DIR}/logs
 mkdir -p /var/log/supervisor

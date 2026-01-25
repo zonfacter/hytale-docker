@@ -18,6 +18,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HYTALE_PORT=5520 \
     HYTALE_MEMORY_MIN=2G \
     HYTALE_MEMORY_MAX=4G \
+    # Downloader (optional: set URL to auto-download)
+    HYTALE_DOWNLOADER_URL="" \
     # Dashboard
     DASHBOARD_DIR=/opt/hytale-dashboard \
     DASHBOARD_PORT=8088 \
@@ -77,9 +79,10 @@ COPY --chown=hytale:hytale config/world-config.json ${HYTALE_DIR}/universe/world
 COPY --chown=hytale:hytale scripts/entrypoint.sh /entrypoint.sh
 COPY --chown=hytale:hytale scripts/start-server.sh ${HYTALE_DIR}/start.sh
 COPY --chown=hytale:hytale scripts/download-server.sh ${HYTALE_DIR}/.downloader/download.sh
+COPY --chown=hytale:hytale scripts/fetch-downloader.sh ${HYTALE_DIR}/.downloader/fetch.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh ${HYTALE_DIR}/.downloader/download.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh ${HYTALE_DIR}/.downloader/download.sh ${HYTALE_DIR}/.downloader/fetch.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html

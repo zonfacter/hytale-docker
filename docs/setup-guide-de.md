@@ -52,7 +52,9 @@ docker-compose up -d
 
 ### Schritt 1: Hytale Downloader besorgen
 
-Der Hytale Server kann nicht direkt verteilt werden - du musst ihn selbst herunterladen.
+Der Hytale Server kann nicht direkt verteilt werden - du hast zwei Optionen:
+
+#### Option A: Manueller Download (Traditionell)
 
 1. Besuche [hytale.com](https://hytale.com/)
 2. Lade den **Server-Downloader für Linux** herunter
@@ -66,6 +68,19 @@ mkdir -p ./data/downloader
 # Downloader kopieren (Beispiel)
 cp ~/Downloads/hytale-downloader-linux-amd64 ./data/downloader/
 ```
+
+#### Option B: Automatischer Download (Empfohlen für CI/CD)
+
+Wenn du Zugriff auf eine URL hast, die den Hytale Downloader hostet, kannst du den Download automatisieren:
+
+1. Bearbeite `docker-compose.yml` und setze:
+   ```yaml
+   environment:
+     - HYTALE_DOWNLOADER_URL=https://dein-server.com/hytale-downloader-linux-amd64
+   ```
+2. Der Downloader wird automatisch beim Container-Start heruntergeladen
+
+⚠️ **Hinweis:** Die Downloader-URL muss von dir bereitgestellt werden. Es gibt keine offizielle öffentliche Download-URL aufgrund von Lizenzbeschränkungen.
 
 ### Schritt 2: Container starten
 

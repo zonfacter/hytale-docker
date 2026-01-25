@@ -32,6 +32,12 @@ services:
       - HYTALE_MEMORY_MIN=2G
       - HYTALE_MEMORY_MAX=4G
 
+      # Downloader Settings
+      # Optional: Provide URL to automatically download the Hytale downloader
+      # If not set, you must manually copy the downloader to ./data/downloader/
+      # Example: - HYTALE_DOWNLOADER_URL=https://your-server.com/hytale-downloader-linux-amd64
+      - HYTALE_DOWNLOADER_URL=
+
       # Dashboard Settings
       - DASH_USER=admin
       - DASH_PASS=changeme          # CHANGE THIS!
