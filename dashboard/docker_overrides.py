@@ -5,6 +5,7 @@ This file replaces systemd-dependent functions with supervisord equivalents.
 
 import os
 import subprocess
+import json
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -13,6 +14,7 @@ SERVICE_NAME = "hytale-server"  # supervisord program name
 SERVER_DIR = Path(os.environ.get("HYTALE_DIR", "/opt/hytale-server"))
 LOG_DIR = SERVER_DIR / "logs"
 LOG_LINES = 150
+DOWNLOAD_SCRIPT = "/usr/local/bin/hytale-download.sh"
 
 
 def run_cmd(cmd: list[str], timeout: int = 10) -> tuple[str, int]:
@@ -160,7 +162,6 @@ def get_backup_frequency() -> int:
     """
     # For Docker deployment, backup frequency could be managed differently
     # For now, return 0 (disabled) as a safe default
-    # TODO: Implement Docker-specific backup frequency management
     return 0
 
 
@@ -173,3 +174,147 @@ def set_backup_frequency(freq: int) -> bool:
     # Perhaps through environment variables or a config file
     # For now, this is a no-op
     return False
+
+
+def run_backup() -> tuple[str, int]:
+    """
+    Run backup in Docker.
+    In Docker, we don't have the hytale-backup.sh script.
+    This could be implemented with a simple tar command or similar.
+    """
+    import tarfile
+    from datetime import datetime
+
+    backup_dir = SERVER_DIR / "backups"
+    universe_dir = SERVER_DIR / "universe"
+
+    if not universe_dir.exists():
+        return "Universe directory not found", 1
+
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = backup_dir / f"hytale_{timestamp}.tar.gz"
+
+    try:
+        with tarfile.open(backup_file, "w:gz") as tar:
+            tar.add(universe_dir, arcname="universe")
+        return f"Backup created: {backup_file.name}", 0
+    except Exception as e:
+        return f"Backup failed: {e}", 1
+
+
+def check_version() -> dict:
+    """
+    Check for updates in Docker.
+    Returns version info without using the update script.
+    """
+    version_file = SERVER_DIR / "last_version.txt"
+    latest_file = SERVER_DIR / ".latest_version"
+
+    current = "unknown"
+    latest = "unknown"
+
+    try:
+        if version_file.exists():
+            current = version_file.read_text().strip()
+    except (PermissionError, OSError):
+        pass
+
+    try:
+        if latest_file.exists():
+            latest = latest_file.read_text().strip()
+    except (PermissionError, OSError):
+        pass
+
+    return {
+        "current_version": current,
+        "latest_version": latest,
+        "update_available": current != latest and latest != "unknown",
+        "docker_mode": True,
+        "message": "Version check in Docker mode. Use 'docker pull' to update the image."
+    }
+
+
+def run_update() -> dict:
+    """
+    Run update in Docker.
+    In Docker, updates are done by pulling a new image, not by running update scripts.
+    """
+    return {
+        "error": None,
+        "docker_mode": True,
+        "message": "Updates in Docker should be done by pulling a new image: docker pull zonfacter/hytale-docker:latest"
+    }
+
+
+def check_auto_update() -> None:
+    """
+    Auto-update check in Docker.
+    Not applicable - updates are done via image pulls.
+    """
+    pass
+
+
+def get_players_from_logs() -> list[dict]:
+    """
+    Parse player events from log files instead of journalctl.
+    """
+    import re
+
+    log_file = LOG_DIR / "server.log"
+    players = {}
+
+    join_re = re.compile(
+        r"(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}).*Adding player '([^']+)' to world '([^']+)' at location .+\(([a-f0-9-]+)\)"
+    )
+    leave_re = re.compile(
+        r"(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}).*Removing player '([^']+?)(?:\s*\([^)]+\))?'.*\(([a-f0-9-]+)\)\s*$"
+    )
+
+    if not log_file.exists():
+        return []
+
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                m = join_re.search(line)
+                if m:
+                    ts, name, world, uuid = m.group(1), m.group(2), m.group(3), m.group(4)
+                    players[uuid] = {
+                        "name": name, "uuid": uuid,
+                        "online": True, "last_login": ts,
+                        "last_logout": None, "world": world, "position": None,
+                    }
+                    continue
+                m = leave_re.search(line)
+                if m:
+                    ts, name, uuid = m.group(1), m.group(2), m.group(3)
+                    if uuid in players:
+                        players[uuid]["online"] = False
+                        players[uuid]["last_logout"] = ts
+    except (PermissionError, OSError):
+        pass
+
+    return list(players.values())
+
+
+def get_console_output(since: str = "") -> list[str]:
+    """
+    Get console output from log file instead of journalctl.
+    """
+    log_file = LOG_DIR / "server.log"
+    lines = []
+
+    if not log_file.exists():
+        return ["[Log file not found - server may not have started yet]"]
+
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+            all_lines = f.readlines()
+            # Return last 50 lines
+            lines = [line.rstrip() for line in all_lines[-50:]]
+    except (PermissionError, OSError) as e:
+        lines = [f"[Error reading log: {e}]"]
+
+    return lines

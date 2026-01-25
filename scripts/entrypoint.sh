@@ -25,6 +25,17 @@ echo "[entrypoint] Ensuring script permissions..."
 chmod +x ${HYTALE_DIR}/start.sh 2>/dev/null || true
 chmod +x /usr/local/bin/hytale-*.sh 2>/dev/null || true
 
+# Verify start.sh is executable (critical for supervisord)
+if [ -f "${HYTALE_DIR}/start.sh" ]; then
+    if [ ! -x "${HYTALE_DIR}/start.sh" ]; then
+        echo "[entrypoint] WARNING: start.sh is not executable, fixing..."
+        chmod +x ${HYTALE_DIR}/start.sh
+    fi
+    echo "[entrypoint] start.sh permissions: $(ls -la ${HYTALE_DIR}/start.sh)"
+else
+    echo "[entrypoint] WARNING: start.sh not found at ${HYTALE_DIR}/start.sh"
+fi
+
 # Fix permissions for volumes
 echo "[entrypoint] Setting up permissions..."
 chown -R hytale:hytale ${HYTALE_DIR}/universe || true
