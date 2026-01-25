@@ -70,8 +70,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            DEBIAN_BASE_IMAGE=debian:bookworm-slim
-            DEBIAN_CODENAME=bookworm
+            DEBIAN_BASE_IMAGE=debian:trixie-slim
+            DEBIAN_CODENAME=trixie
             JAVA_VERSION=24
 
   update-dockerhub-description:

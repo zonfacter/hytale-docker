@@ -143,15 +143,15 @@ Build with custom base image and Java version:
 
 ```bash
 docker build \
-  --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
-  --build-arg DEBIAN_CODENAME=bookworm \
+  --build-arg DEBIAN_BASE_IMAGE=debian:trixie-slim \
+  --build-arg DEBIAN_CODENAME=trixie \
   --build-arg JAVA_VERSION=24 \
   -t hytale-custom .
 ```
 
 Available build arguments:
-- `DEBIAN_BASE_IMAGE` - Base Debian image (default: `debian:bookworm-slim`)
-- `DEBIAN_CODENAME` - Debian codename for Java repo (default: `bookworm`)
+- `DEBIAN_BASE_IMAGE` - Base Debian image (default: `debian:trixie-slim`)
+- `DEBIAN_CODENAME` - Debian codename for Java repo (default: `trixie`)
 - `JAVA_VERSION` - Eclipse Temurin Java version (default: `24`)
 
 ## Links
@@ -299,15 +299,15 @@ Build mit benutzerdefiniertem Base-Image und Java-Version:
 
 ```bash
 docker build \
-  --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
-  --build-arg DEBIAN_CODENAME=bookworm \
+  --build-arg DEBIAN_BASE_IMAGE=debian:trixie-slim \
+  --build-arg DEBIAN_CODENAME=trixie \
   --build-arg JAVA_VERSION=24 \
   -t hytale-custom .
 ```
 
 Verfügbare Build-Argumente:
-- `DEBIAN_BASE_IMAGE` - Basis Debian-Image (Standard: `debian:bookworm-slim`)
-- `DEBIAN_CODENAME` - Debian Codename für Java-Repo (Standard: `bookworm`)
+- `DEBIAN_BASE_IMAGE` - Basis Debian-Image (Standard: `debian:trixie-slim`)
+- `DEBIAN_CODENAME` - Debian Codename für Java-Repo (Standard: `trixie`)
 - `JAVA_VERSION` - Eclipse Temurin Java-Version (Standard: `24`)
 
 ## Links

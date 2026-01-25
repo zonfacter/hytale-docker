@@ -4,8 +4,8 @@
 #===============================================================================
 
 # Build arguments for customization
-ARG DEBIAN_BASE_IMAGE=debian:bookworm-slim
-ARG DEBIAN_CODENAME=bookworm
+ARG DEBIAN_BASE_IMAGE=debian:trixie-slim
+ARG DEBIAN_CODENAME=trixie
 ARG JAVA_VERSION=24
 
 FROM ${DEBIAN_BASE_IMAGE}
