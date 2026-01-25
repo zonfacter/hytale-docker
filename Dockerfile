@@ -85,6 +85,12 @@ RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh ${HYTALE_DIR}/.downloader/dow
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html
 COPY --chown=hytale:hytale dashboard/setup_routes.py ${DASHBOARD_DIR}/setup_routes.py
 
+# Apply Docker-specific patches to make dashboard work with supervisord
+COPY --chown=hytale:hytale dashboard/docker_overrides.py ${DASHBOARD_DIR}/docker_overrides.py
+COPY --chown=hytale:hytale dashboard/apply_docker_patches.py ${DASHBOARD_DIR}/apply_docker_patches.py
+RUN python3 ${DASHBOARD_DIR}/apply_docker_patches.py ${DASHBOARD_DIR} && \
+    chown -R hytale:hytale ${DASHBOARD_DIR}
+
 # Expose ports
 # 5520/udp - Hytale Game Server
 # 5523/tcp - Nitrado WebServer API (plugins)
