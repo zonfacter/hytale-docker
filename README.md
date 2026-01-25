@@ -334,6 +334,7 @@ Install mods directly from CurseForge:
 
 - 🇩🇪 [Einrichtungsanleitung (Deutsch)](docs/setup-guide-de.md)
 - 🇬🇧 [Setup Guide (English)](docs/setup-guide-en.md)
+- ⚙️ [Configuration & Read-Only Containers](docs/configuration.md)
 - 🔧 [IPC Mechanisms & FIFO Documentation](docs/ipc-mechanisms.md)
 - 📊 [Dashboard Repository](https://github.com/zonfacter/hytale-dashboard)
 

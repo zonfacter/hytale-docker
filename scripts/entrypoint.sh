@@ -37,14 +37,23 @@ fi
 mkdir -p ${HYTALE_DIR}/logs
 mkdir -p /var/log/supervisor
 
+# Prepare supervisord configuration in writable location
+# This allows the configuration to work in read-only containers
+SUPERVISOR_CONFIG_DIR="/tmp/supervisor"
+SUPERVISOR_CONFIG="${SUPERVISOR_CONFIG_DIR}/supervisord.conf"
+mkdir -p "${SUPERVISOR_CONFIG_DIR}"
+
+# Copy base configuration to writable location
+cp /etc/supervisor/conf.d/supervisord.conf "${SUPERVISOR_CONFIG}"
+
 # Check if server is installed
 SERVER_JAR="${HYTALE_DIR}/Server/HytaleServer.jar"
 ASSETS_ZIP="${HYTALE_DIR}/Assets.zip"
 
 if [ -f "$SERVER_JAR" ] && [ -f "$ASSETS_ZIP" ]; then
     echo "[entrypoint] Hytale Server found - enabling auto-start"
-    # Enable server in supervisord
-    sed -i 's/autostart=false/autostart=true/' /etc/supervisor/conf.d/supervisord.conf
+    # Enable server in supervisord configuration (in writable location)
+    sed -i 's/autostart=false/autostart=true/' "${SUPERVISOR_CONFIG}"
 else
     echo ""
     echo "╔════════════════════════════════════════════════════════════════╗"
@@ -59,6 +68,9 @@ else
     echo "╚════════════════════════════════════════════════════════════════╝"
     echo ""
 fi
+
+# Export config path for supervisord
+export SUPERVISOR_CONFIG
 
 # Create console pipe if not exists
 # Note: Named Pipes (FIFO) may have compatibility issues in some environments
@@ -76,4 +88,11 @@ echo "[entrypoint] Starting services..."
 echo ""
 
 # Execute the main command
-exec "$@"
+# If supervisord is being started, use the config from writable location
+if [ "$1" = "supervisord" ] || [ "$1" = "/usr/bin/supervisord" ]; then
+    shift  # Remove 'supervisord' from arguments
+    # Start supervisord with config from writable location
+    exec supervisord -c "${SUPERVISOR_CONFIG}" "$@"
+else
+    exec "$@"
+fi
