@@ -208,8 +208,13 @@ java -jar Server/HytaleServer.jar --rcon-port "$CONSOLE_PORT" ...
 ```
 
 ```bash
-# Befehl senden (mit mcrcon tool)
+# Befehl senden (mit mcrcon tool - muss separat installiert werden)
+# Installation: https://github.com/Tiiffi/mcrcon
+# Oder via apt/brew: apt-get install mcrcon / brew install mcrcon
 mcrcon -H 127.0.0.1 -P 25575 -p "$RCON_PASSWORD" "stop"
+
+# Alternative: Mit netcat (meist vorinstalliert)
+echo "stop" | nc 127.0.0.1 25575
 ```
 
 #### Option 3: Supervisord stdin/stdout
@@ -536,8 +541,13 @@ java -jar Server/HytaleServer.jar --rcon-port "$CONSOLE_PORT" ...
 ```
 
 ```bash
-# Send command (with mcrcon tool)
+# Send command (with mcrcon tool - must be installed separately)
+# Installation: https://github.com/Tiiffi/mcrcon
+# Or via package manager: apt-get install mcrcon / brew install mcrcon
 mcrcon -H 127.0.0.1 -P 25575 -p "$RCON_PASSWORD" "stop"
+
+# Alternative: Using netcat (usually pre-installed)
+echo "stop" | nc 127.0.0.1 25575
 ```
 
 #### Option 3: Supervisord stdin/stdout
@@ -585,13 +595,21 @@ server.supervisor.sendProcessStdin('hytale-server', 'stop\n')
 
 ### Configuration & Switching
 
-Currently, the image only uses Named Pipes. In the future, an environment variable could be implemented:
+Currently, the image only uses Named Pipes. This section describes a potential future enhancement.
+
+**Note:** The following configuration option is **not currently implemented** in the image. It serves as a conceptual example for future development. Users wanting to implement alternative IPC methods will need to modify the scripts manually (see the implementation examples above).
 
 ```yaml
-# docker-compose.yml (future)
+# docker-compose.yml (conceptual future implementation - NOT currently supported)
 environment:
   - CONSOLE_IPC_METHOD=fifo  # or: socket, tcp, supervisord
 ```
+
+If you need an alternative IPC method now, you can:
+1. Fork the repository and modify the scripts according to the examples provided
+2. Use volume mounts to override `entrypoint.sh` and `start-server.sh` with your custom versions
+3. Submit a PR to add configurable IPC methods to this project
+
 
 ---
 

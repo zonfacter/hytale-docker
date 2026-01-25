@@ -174,11 +174,14 @@ spec:
 **Important Notes:**
 
 1. **Pipe Volume**: The `pipes` volume uses `emptyDir` which is temporary but supports FIFO files
-2. **Script Update Needed**: You'll need to modify the scripts to use `/opt/hytale-server/pipes/.console_pipe` instead of `/opt/hytale-server/.console_pipe`
-3. **PVC Storage**: Use local or block storage for PVCs, not NFS or network storage
-4. **Security Context**: Don't use `readOnlyRootFilesystem: true` as it prevents FIFO creation
+2. **Workaround for Network Storage**: If your PVC uses network storage (NFS, EBS, etc.), the pipe creation will fail. This configuration mounts a separate `emptyDir` volume at `/opt/hytale-server/pipes` as a workaround. However, the current image scripts expect the pipe at `/opt/hytale-server/.console_pipe`, so this example requires customization (see Example 2 below for the ConfigMap approach to override the pipe location).
+3. **Alternative: Without Pipe Volume Override**: If you use local/block storage for your PVC (not network storage), you can omit the `pipes` volume entirely and the default FIFO location will work.
+4. **PVC Storage**: Use local or block storage for PVCs when possible to avoid FIFO compatibility issues
+5. **Security Context**: Don't use `readOnlyRootFilesystem: true` as it prevents FIFO creation
 
 ## Example 2: With ConfigMap to Override Pipe Location
+
+**Use this example when you need to use network storage for PVCs and must place pipes in `emptyDir`.**
 
 Create a ConfigMap to override the pipe location:
 
