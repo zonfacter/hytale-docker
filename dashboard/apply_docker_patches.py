@@ -79,13 +79,19 @@ def apply_patches(dashboard_dir: Path):
         new_backup_func = 'def get_backup_frequency_systemd() -> int:\n    """Read current backup frequency from hytale.service (or override)."""'
         content = content.replace(old_backup_func, new_backup_func)
         
-        wrapper = '\n\ndef get_backup_frequency() -> int:\n    """Get backup frequency (Docker-aware)."""\n    if DOCKER_MODE:\n        return docker_get_backup_frequency()\n    return get_backup_frequency_systemd()\n\n'
+        wrapper = (
+            "\n\ndef get_backup_frequency() -> int:\n"
+            "    \"\"\"Get backup frequency (Docker-aware).\"\"\"\n"
+            "    if DOCKER_MODE:\n"
+            "        return docker_get_backup_frequency()\n"
+            "    return get_backup_frequency_systemd()\n\n"
+        )
         
         marker_candidates = [
             "def build_exec_start",
             "@app.get(\"/api/config\")",
             "def api_config",
-            "# ---------------------------------------------------------------------------\n# Configuration Endpoints",
+            "# Configuration Endpoints",
         ]
         for marker in marker_candidates:
             if marker in content:
@@ -93,7 +99,6 @@ def apply_patches(dashboard_dir: Path):
                 break
         else:
             print("WARNING: Could not find marker for backup frequency wrapper", file=sys.stderr)
-            content = content + wrapper
     
     # Patch the api_server_action function to use supervisorctl
     old_allowed = '    allowed = {\n        "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],\n        "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],\n        "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],\n    }'
