@@ -77,11 +77,26 @@ docker-compose up -d
 
 ### 1. Get the Hytale Downloader
 
-The Hytale server binary cannot be distributed. You need to download it:
+The Hytale server binary cannot be distributed. You have two options:
+
+#### Option A: Manual Download (Traditional)
 
 1. Visit [hytale.com](https://hytale.com/)
 2. Download the **Linux server downloader**
 3. Copy to `./data/downloader/hytale-downloader-linux-amd64`
+
+#### Option B: Automatic Download (Recommended for CI/CD)
+
+If you have access to a URL hosting the Hytale downloader, you can automate the download:
+
+1. Edit `docker-compose.yml` and set:
+   ```yaml
+   environment:
+     - HYTALE_DOWNLOADER_URL=https://your-server.com/hytale-downloader-linux-amd64
+   ```
+2. The downloader will be fetched automatically on container start
+
+⚠️ **Note:** The downloader URL must be provided by you. There is no official public download URL due to licensing restrictions.
 
 ### 2. Start and Configure
 
@@ -110,6 +125,9 @@ environment:
   # Server Settings
   - HYTALE_MEMORY_MIN=2G
   - HYTALE_MEMORY_MAX=4G
+
+  # Downloader Settings (Optional)
+  - HYTALE_DOWNLOADER_URL=https://your-url/hytale-downloader-linux-amd64
 
   # Dashboard Settings
   - DASH_USER=admin
@@ -196,6 +214,11 @@ Install mods directly from CurseForge:
 ---
 
 ## Troubleshooting
+
+### Downloader not found
+- **Manual setup**: Copy `hytale-downloader-linux-amd64` to `./data/downloader/`
+- **Automatic setup**: Set `HYTALE_DOWNLOADER_URL` in `docker-compose.yml` to your hosted downloader URL
+- Check container logs: `docker-compose logs hytale` to see fetch attempts
 
 ### OAuth link doesn't appear
 - Click "Refresh Log" in the setup wizard

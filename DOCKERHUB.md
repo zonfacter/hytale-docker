@@ -45,9 +45,16 @@ Then open `http://localhost:8088/setup` in your browser.
 ## Initial Setup
 
 1. **Get the Hytale Downloader**
+   
+   **Option A: Manual (Traditional)**
    - Visit [hytale.com](https://hytale.com/)
    - Download the Linux server downloader
    - Copy `hytale-downloader-linux-amd64` to `./hytale-data/downloader/`
+   
+   **Option B: Automatic (CI/CD)**
+   - Set environment variable: `HYTALE_DOWNLOADER_URL=https://your-url/hytale-downloader-linux-amd64`
+   - Downloader will be fetched automatically on container start
+   - ⚠️ You must provide your own URL (no official public URL available)
 
 2. **Complete Setup via Dashboard**
    - Open `http://localhost:8088/setup`
@@ -66,6 +73,7 @@ Then open `http://localhost:8088/setup` in your browser.
 |----------|---------|-------------|
 | `HYTALE_MEMORY_MIN` | `2G` | Minimum Java heap size |
 | `HYTALE_MEMORY_MAX` | `4G` | Maximum Java heap size |
+| `HYTALE_DOWNLOADER_URL` | *(empty)* | Optional: URL to auto-download the Hytale downloader |
 | `DASH_USER` | `admin` | Dashboard username |
 | `DASH_PASS` | `changeme` | Dashboard password (**change this!**) |
 | `ALLOW_CONTROL` | `true` | Allow server control via dashboard |
@@ -171,9 +179,16 @@ Dann öffne `http://localhost:8088/setup` im Browser.
 ## Ersteinrichtung
 
 1. **Hytale Downloader besorgen**
+   
+   **Option A: Manuell (Traditionell)**
    - Besuche [hytale.com](https://hytale.com/)
    - Lade den Linux Server-Downloader herunter
    - Kopiere `hytale-downloader-linux-amd64` nach `./hytale-data/downloader/`
+   
+   **Option B: Automatisch (CI/CD)**
+   - Setze Umgebungsvariable: `HYTALE_DOWNLOADER_URL=https://deine-url/hytale-downloader-linux-amd64`
+   - Downloader wird automatisch beim Container-Start heruntergeladen
+   - ⚠️ Du musst deine eigene URL bereitstellen (keine offizielle öffentliche URL verfügbar)
 
 2. **Setup im Dashboard abschließen**
    - Öffne `http://localhost:8088/setup`
@@ -192,6 +207,7 @@ Dann öffne `http://localhost:8088/setup` im Browser.
 |----------|----------|--------------|
 | `HYTALE_MEMORY_MIN` | `2G` | Minimaler Java-Heap |
 | `HYTALE_MEMORY_MAX` | `4G` | Maximaler Java-Heap |
+| `HYTALE_DOWNLOADER_URL` | *(leer)* | Optional: URL zum automatischen Download des Hytale Downloaders |
 | `DASH_USER` | `admin` | Dashboard-Benutzer |
 | `DASH_PASS` | `changeme` | Dashboard-Passwort (**ändern!**) |
 | `ALLOW_CONTROL` | `true` | Server-Steuerung erlauben |
