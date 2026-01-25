@@ -86,11 +86,13 @@ COPY --chown=hytale:hytale config/server-config.json ${HYTALE_DIR}/config.json
 COPY --chown=hytale:hytale config/world-config.json ${HYTALE_DIR}/universe/worlds/default/config.json
 COPY --chown=hytale:hytale scripts/entrypoint.sh /entrypoint.sh
 COPY --chown=hytale:hytale scripts/start-server.sh ${HYTALE_DIR}/start.sh
-COPY --chown=hytale:hytale scripts/download-server.sh ${HYTALE_DIR}/.downloader/download.sh
-COPY --chown=hytale:hytale scripts/fetch-downloader.sh ${HYTALE_DIR}/.downloader/fetch.sh
+# Scripts that need to persist in volumes are copied at runtime by entrypoint
+# Scripts outside volumes (won't be overwritten by mounts)
+COPY --chown=root:root scripts/download-server.sh /usr/local/bin/hytale-download.sh
+COPY --chown=root:root scripts/fetch-downloader.sh /usr/local/bin/hytale-fetch-downloader.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh ${HYTALE_DIR}/.downloader/download.sh ${HYTALE_DIR}/.downloader/fetch.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html

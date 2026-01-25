@@ -53,17 +53,35 @@ EOFCONFIG
     chown hytale:hytale "$WORLD_CONFIG_FILE"
 fi
 
+# Copy download script to volume (needed for dashboard setup wizard)
+if [ -f "/usr/local/bin/hytale-download.sh" ]; then
+    cp /usr/local/bin/hytale-download.sh "${HYTALE_DIR}/.downloader/download.sh"
+    chown hytale:hytale "${HYTALE_DIR}/.downloader/download.sh"
+    chmod +x "${HYTALE_DIR}/.downloader/download.sh"
+fi
+
 # Try to fetch downloader if not present
 echo "[entrypoint] Checking Hytale downloader..."
-if [ -f "${HYTALE_DIR}/.downloader/fetch.sh" ]; then
-    if gosu hytale bash "${HYTALE_DIR}/.downloader/fetch.sh"; then
-        echo "[entrypoint] Downloader check completed successfully"
+DOWNLOADER_BIN="${HYTALE_DIR}/.downloader/hytale-downloader-linux-amd64"
+if [ ! -f "$DOWNLOADER_BIN" ]; then
+    echo "[entrypoint] Downloader not found, attempting automatic fetch..."
+    if [ -f "/usr/local/bin/hytale-fetch-downloader.sh" ]; then
+        # Run fetch script with environment variables
+        export DOWNLOADER_DIR="${HYTALE_DIR}/.downloader"
+        export DOWNLOADER_BIN="$DOWNLOADER_BIN"
+        if gosu hytale bash /usr/local/bin/hytale-fetch-downloader.sh; then
+            echo "[entrypoint] Downloader fetch completed successfully"
+        else
+            EXIT_CODE=$?
+            echo "[entrypoint] Downloader fetch exited with code ${EXIT_CODE}"
+            echo "[entrypoint] Manual upload still possible via volume mount"
+            echo "[entrypoint] See setup instructions at http://localhost:${DASHBOARD_PORT}/setup"
+        fi
     else
-        EXIT_CODE=$?
-        echo "[entrypoint] Downloader fetch script exited with code ${EXIT_CODE}"
-        echo "[entrypoint] This is normal if downloader is not yet available"
-        echo "[entrypoint] See setup instructions in dashboard at http://localhost:${DASHBOARD_PORT}/setup"
+        echo "[entrypoint] Fetch script not found"
     fi
+else
+    echo "[entrypoint] Downloader already present"
 fi
 
 # Prepare supervisord configuration in writable location
