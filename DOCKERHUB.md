@@ -123,7 +123,8 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
-| `1.1.0`, `1.1`, `1` | Current version with automatic downloader |
+| `1.2.0`, `1.2` | Full Docker dashboard compatibility |
+| `1.1.0`, `1.1`, `1` | Automatic downloader feature |
 | `1.0.0`, `1.0` | Initial release |
 | `master` | Development build (may be unstable) |
 
@@ -277,7 +278,8 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
-| `1.1.0`, `1.1`, `1` | Aktuelle Version mit automatischem Downloader |
+| `1.2.0`, `1.2` | Volle Docker Dashboard-Kompatibilität |
+| `1.1.0`, `1.1`, `1` | Automatischer Downloader |
 | `1.0.0`, `1.0` | Erstveröffentlichung |
 | `master` | Entwicklungsversion (evtl. instabil) |
 
