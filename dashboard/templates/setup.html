@@ -147,32 +147,31 @@
       <div class="step-header">
         <span class="step-number" id="step1-num">1</span>
         <span class="step-title">
-          <span class="lang-de">Hytale Downloader bereitstellen</span>
-          <span class="lang-en hidden">Provide Hytale Downloader</span>
+          <span class="lang-de">Hytale Downloader (Automatisch)</span>
+          <span class="lang-en hidden">Hytale Downloader (Automatic)</span>
         </span>
       </div>
       <div class="step-content">
         <p class="lang-de">
-          Der Hytale Downloader wird benötigt, um den Server herunterzuladen.
+          Der Hytale Downloader wird automatisch von <code>hytale.com</code> heruntergeladen.
         </p>
         <p class="lang-en hidden">
-          The Hytale Downloader is required to download the server files.
+          The Hytale Downloader is automatically fetched from <code>hytale.com</code>.
         </p>
 
         <div class="info-box">
-          <strong class="lang-de">So geht's:</strong>
-          <strong class="lang-en hidden">How to:</strong>
-          <ol style="margin: 8px 0 0 20px;">
-            <li class="lang-de">Besuche <a href="https://hytale.com/" target="_blank">hytale.com</a></li>
-            <li class="lang-en hidden">Visit <a href="https://hytale.com/" target="_blank">hytale.com</a></li>
-            <li class="lang-de">Lade den Server-Downloader für Linux herunter</li>
-            <li class="lang-en hidden">Download the server downloader for Linux</li>
-            <li class="lang-de">Kopiere <code>hytale-downloader-linux-amd64</code> nach:</li>
-            <li class="lang-en hidden">Copy <code>hytale-downloader-linux-amd64</code> to:</li>
-          </ol>
-          <code style="display: block; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;">
-            ./data/downloader/hytale-downloader-linux-amd64
-          </code>
+          <strong class="lang-de">ℹ️ Automatischer Download:</strong>
+          <strong class="lang-en hidden">ℹ️ Automatic Download:</strong>
+          <p class="lang-de" style="margin: 8px 0 0 0;">
+            Der Downloader wird beim Container-Start automatisch von<br>
+            <code>https://downloader.hytale.com/hytale-downloader.zip</code><br>
+            heruntergeladen und entpackt.
+          </p>
+          <p class="lang-en hidden" style="margin: 8px 0 0 0;">
+            The downloader is automatically fetched from<br>
+            <code>https://downloader.hytale.com/hytale-downloader.zip</code><br>
+            and extracted on container start.
+          </p>
         </div>
 
         <div id="downloader-status" class="muted" style="margin-top: 12px;">

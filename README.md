@@ -18,9 +18,12 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 - 🎮 **Hytale Dedicated Server** - Ready to run
 - 🖥️ **Web Dashboard** - Manage your server via browser
 - 🔧 **Setup Wizard** - Guided installation with OAuth support
+- ⬇️ **Automatic Downloader** - Server files downloaded automatically
 - 📦 **CurseForge Integration** - Install mods with one click
 - 💾 **Automatic Backups** - Built-in backup system
 - 🔄 **Easy Updates** - One command to update
+
+![Setup Wizard](docs/screenshots/setup-wizard.png)
 
 ---
 
@@ -91,28 +94,20 @@ docker-compose up -d
 
 ## Initial Setup
 
-### 1. Get the Hytale Downloader
+### 1. Hytale Downloader (Automatic)
 
-The Hytale server binary cannot be distributed. You have two options:
+The container automatically downloads the Hytale Downloader on first start from:
+```
+https://downloader.hytale.com/hytale-downloader.zip
+```
 
-#### Option A: Manual Download (Traditional)
+**No manual action required!** The ZIP file is automatically extracted and the Linux binary is installed.
 
-1. Visit [hytale.com](https://hytale.com/)
-2. Download the **Linux server downloader**
-3. Copy to `./data/downloader/hytale-downloader-linux-amd64`
-
-#### Option B: Automatic Download (Recommended for CI/CD)
-
-If you have access to a URL hosting the Hytale downloader, you can automate the download:
-
-1. Edit `docker-compose.yml` and set:
-   ```yaml
-   environment:
-     - HYTALE_DOWNLOADER_URL=https://your-server.com/hytale-downloader-linux-amd64
-   ```
-2. The downloader will be fetched automatically on container start
-
-⚠️ **Note:** The downloader URL must be provided by you. There is no official public download URL due to licensing restrictions.
+> 💡 **Custom URL:** If needed, you can override the URL via environment variable:
+> ```yaml
+> environment:
+>   - HYTALE_DOWNLOADER_URL=https://custom-url/downloader.zip
+> ```
 
 ### 2. Start and Configure
 
@@ -124,11 +119,13 @@ docker-compose up -d
 
 Open `http://localhost:8088/setup` and follow the wizard:
 
-1. ✅ Downloader detected
+1. ✅ Downloader automatically fetched from hytale.com
 2. 🔐 Click "Start Download" → OAuth link appears in log
 3. 🌐 Open OAuth link in browser → Login with Hytale account
 4. ⬇️ Server downloads automatically
 5. 🎉 Done! Server starts automatically
+
+![Setup Process](docs/screenshots/setup-oauth.png)
 
 ---
 
@@ -142,8 +139,8 @@ environment:
   - HYTALE_MEMORY_MIN=2G
   - HYTALE_MEMORY_MAX=4G
 
-  # Downloader Settings (Optional)
-  - HYTALE_DOWNLOADER_URL=https://your-url/hytale-downloader-linux-amd64
+  # Downloader (automatic, uses official URL by default)
+  # - HYTALE_DOWNLOADER_URL=https://downloader.hytale.com/hytale-downloader.zip
 
   # Dashboard Settings
   - DASH_USER=admin
@@ -343,14 +340,20 @@ Install mods directly from CurseForge:
 ## Troubleshooting
 
 ### Downloader not found
-**With named volumes (default):**
-- Check if file exists in volume: `docker run --rm -v hytale-downloader:/downloader ubuntu ls -la /downloader/`
-- Copy file to volume: `docker run --rm -v hytale-downloader:/downloader -v $(pwd):/host ubuntu cp /host/hytale-downloader-linux-amd64 /downloader/`
-- **Automatic setup**: Set `HYTALE_DOWNLOADER_URL` in `docker-compose.yml` to your hosted downloader URL
+The downloader is fetched automatically from `https://downloader.hytale.com/hytale-downloader.zip` on first start.
 
-**With bind mounts:**
-- **Manual setup**: Copy `hytale-downloader-linux-amd64` to `./data/downloader/`
-- Check container logs: `docker-compose logs hytale` to see fetch attempts
+**If automatic download fails:**
+- Check container logs: `docker-compose logs hytale`
+- Verify network connectivity
+- Try manual download:
+  ```bash
+  # Download and extract manually
+  wget https://downloader.hytale.com/hytale-downloader.zip
+  unzip hytale-downloader.zip
+  # Copy to volume
+  docker run --rm -v hytale-downloader:/downloader -v $(pwd):/host ubuntu \
+    cp /host/hytale-downloader-linux-amd64 /downloader/
+  ```
 
 ### OAuth link doesn't appear
 - Click "Refresh Log" in the setup wizard
