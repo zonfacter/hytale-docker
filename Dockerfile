@@ -54,7 +54,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Eclipse Temurin Java (Adoptium)
-# Use ARG to make Java version configurable during build
+# Re-declare ARGs after FROM to make them available in this build stage
+# (ARGs before FROM are only available for the FROM instruction)
 ARG DEBIAN_CODENAME
 ARG JAVA_VERSION
 RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg \
