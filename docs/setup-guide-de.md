@@ -323,6 +323,27 @@ environment:
 2. Nach Mod-Installation: Server neu starten
 3. Prüfe die Server-Logs auf Fehler
 
+### Konsolenbefehle funktionieren nicht
+
+**Problem:** Befehle über das Dashboard kommen nicht beim Server an
+
+**Ursache:** Named Pipe (FIFO) Kompatibilitätsprobleme mit Storage-Treibern oder Orchestrierung
+
+**Diagnose:**
+```bash
+# Prüfen, ob Pipe existiert
+docker exec hytale-server ls -l /opt/hytale-server/.console_pipe
+
+# Sollte anzeigen: prw-rw---- (p = pipe)
+```
+
+**Lösung:**
+- Siehe **[IPC Mechanismen Dokumentation](ipc-mechanisms.md)** für:
+  - Storage-Driver-Kompatibilität
+  - Kubernetes-spezifische Probleme
+  - Alternative IPC-Methoden (Unix Sockets, TCP)
+  - Windows Docker Desktop Besonderheiten
+
 ---
 
 ## Support

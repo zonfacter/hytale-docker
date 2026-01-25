@@ -61,6 +61,9 @@ else
 fi
 
 # Create console pipe if not exists
+# Note: Named Pipes (FIFO) may have compatibility issues in some environments
+# (e.g., certain storage drivers, Kubernetes, Windows). For details and alternatives,
+# see: docs/ipc-mechanisms.md
 CONSOLE_PIPE="${HYTALE_DIR}/.console_pipe"
 if [ ! -p "$CONSOLE_PIPE" ]; then
     echo "[entrypoint] Creating console pipe..."
