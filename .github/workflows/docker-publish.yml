@@ -72,7 +72,7 @@ jobs:
           build-args: |
             DEBIAN_BASE_IMAGE=debian:bookworm-slim
             DEBIAN_CODENAME=bookworm
-            JAVA_VERSION=21
+            JAVA_VERSION=24
 
   update-dockerhub-description:
     runs-on: ubuntu-latest
