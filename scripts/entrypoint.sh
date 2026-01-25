@@ -95,7 +95,10 @@ if [ "$1" = "supervisord" ] || [ "$1" = "/usr/bin/supervisord" ]; then
     ARGS=()
     while [ $# -gt 0 ]; do
         if [ "$1" = "-c" ]; then
-            shift 2  # Skip -c and its argument
+            shift  # Skip -c
+            if [ $# -gt 0 ]; then
+                shift  # Skip its argument if it exists
+            fi
         else
             ARGS+=("$1")
             shift
