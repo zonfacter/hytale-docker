@@ -24,10 +24,10 @@
 # - Work consistently across different operating systems
 #
 # Alternative Optionen / Alternative options:
-# 1. Bind Mounts mit relativen Pfaden - siehe Zeile 81
-#    Bind mounts with relative paths - see line 81
-# 2. Bind Mounts mit absoluten Pfaden - siehe Zeile 93
-#    Bind mounts with absolute paths - see line 93
+# 1. Bind Mounts mit relativen Pfaden - siehe Zeile 106
+#    Bind mounts with relative paths - see line 106
+# 2. Bind Mounts mit absoluten Pfaden - siehe Zeile 116
+#    Bind mounts with absolute paths - see line 116
 #===============================================================================
 
 services:

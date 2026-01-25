@@ -267,8 +267,8 @@ The default configuration uses **named volumes**, which is recommended because:
 If you need direct file system access (e.g., for manual backups):
 
 1. Edit `docker-compose.yml`
-2. Comment out the named volumes (lines 65-79)
-3. Uncomment the relative paths section (lines 85-91)
+2. Comment out the named volumes (lines 86-100)
+3. Uncomment the relative paths section (lines 106-112)
 
 ⚠️ **Important:** You must always run `docker-compose` from the repository root directory!
 
@@ -277,8 +277,8 @@ If you need direct file system access (e.g., for manual backups):
 For production environments with specific storage requirements:
 
 1. Edit `docker-compose.yml`
-2. Comment out the named volumes (lines 65-79)
-3. Uncomment the absolute paths section (lines 95-101)
+2. Comment out the named volumes (lines 86-100)
+3. Uncomment the absolute paths section (lines 116-122)
 4. Replace `/path/to/hytale-data` with your actual data directory
 
 This is the most reliable option for production.

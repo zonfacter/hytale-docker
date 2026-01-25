@@ -267,8 +267,8 @@ Die Standard-Konfiguration verwendet **benannte Volumes** (named volumes), was e
 Wenn du direkten Zugriff auf die Dateien benötigst (z.B. für manuelle Backups):
 
 1. Bearbeite `docker-compose.yml`
-2. Kommentiere die benannten Volumes aus (Zeile 65-79)
-3. Entferne die Kommentare bei den relativen Pfaden (Zeile 85-91)
+2. Kommentiere die benannten Volumes aus (Zeile 86-100)
+3. Entferne die Kommentare bei den relativen Pfaden (Zeile 106-112)
 
 ⚠️ **Wichtig:** Du musst `docker-compose` immer aus dem Repository-Root-Verzeichnis ausführen!
 
@@ -277,8 +277,8 @@ Wenn du direkten Zugriff auf die Dateien benötigst (z.B. für manuelle Backups)
 Für Produktionsumgebungen mit spezifischen Speicheranforderungen:
 
 1. Bearbeite `docker-compose.yml`
-2. Kommentiere die benannten Volumes aus (Zeile 65-79)
-3. Entferne die Kommentare bei den absoluten Pfaden (Zeile 95-101)
+2. Kommentiere die benannten Volumes aus (Zeile 86-100)
+3. Entferne die Kommentare bei den absoluten Pfaden (Zeile 116-122)
 4. Ersetze `/path/to/hytale-data` mit deinem tatsächlichen Datenverzeichnis
 
 Dies ist die zuverlässigste Option für Produktivbetrieb.

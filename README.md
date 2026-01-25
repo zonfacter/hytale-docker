@@ -261,13 +261,13 @@ The default configuration uses **named volumes**, which are recommended because:
 
 #### Alternative 1: Bind Mounts with Relative Paths
 
-If you need direct file system access (e.g., for manual backups), you can use bind mounts with relative paths. Edit `docker-compose.yml` and uncomment the relative path section (around line 85).
+If you need direct file system access (e.g., for manual backups), you can use bind mounts with relative paths. Edit `docker-compose.yml` and uncomment the relative path section (around line 106).
 
 ⚠️ **Important:** You must always run `docker-compose` from the repository root directory, or the data will be stored in unexpected locations.
 
 #### Alternative 2: Bind Mounts with Absolute Paths
 
-For production environments with specific storage requirements, use absolute paths. Edit `docker-compose.yml` and uncomment the absolute path section (around line 95), replacing `/path/to/hytale-data` with your actual data directory.
+For production environments with specific storage requirements, use absolute paths. Edit `docker-compose.yml` and uncomment the absolute path section (around line 116), replacing `/path/to/hytale-data` with your actual data directory.
 
 This is the most reliable option for production as it explicitly defines where data is stored.
 
