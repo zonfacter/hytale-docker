@@ -6,13 +6,13 @@
 # Build arguments for customization
 ARG DEBIAN_BASE_IMAGE=debian:bookworm-slim
 ARG DEBIAN_CODENAME=bookworm
-ARG JAVA_VERSION=21
+ARG JAVA_VERSION=24
 
 FROM ${DEBIAN_BASE_IMAGE}
 
 LABEL maintainer="zonfacter"
 LABEL description="Hytale Dedicated Server with Web Dashboard"
-LABEL version="1.2.0"
+LABEL version="1.3.0"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \

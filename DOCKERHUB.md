@@ -123,6 +123,7 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
+| `1.3.0`, `1.3` | Java 24 support (required for AOTCache) |
 | `1.2.0`, `1.2` | Full Docker dashboard compatibility |
 | `1.1.0`, `1.1`, `1` | Automatic downloader feature |
 | `1.0.0`, `1.0` | Initial release |
@@ -144,14 +145,14 @@ Build with custom base image and Java version:
 docker build \
   --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
   --build-arg DEBIAN_CODENAME=bookworm \
-  --build-arg JAVA_VERSION=21 \
+  --build-arg JAVA_VERSION=24 \
   -t hytale-custom .
 ```
 
 Available build arguments:
 - `DEBIAN_BASE_IMAGE` - Base Debian image (default: `debian:bookworm-slim`)
 - `DEBIAN_CODENAME` - Debian codename for Java repo (default: `bookworm`)
-- `JAVA_VERSION` - Eclipse Temurin Java version (default: `21`)
+- `JAVA_VERSION` - Eclipse Temurin Java version (default: `24`)
 
 ## Links
 
@@ -278,6 +279,7 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
+| `1.3.0`, `1.3` | Java 24 Support (benötigt für AOTCache) |
 | `1.2.0`, `1.2` | Volle Docker Dashboard-Kompatibilität |
 | `1.1.0`, `1.1`, `1` | Automatischer Downloader |
 | `1.0.0`, `1.0` | Erstveröffentlichung |
@@ -299,14 +301,14 @@ Build mit benutzerdefiniertem Base-Image und Java-Version:
 docker build \
   --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
   --build-arg DEBIAN_CODENAME=bookworm \
-  --build-arg JAVA_VERSION=21 \
+  --build-arg JAVA_VERSION=24 \
   -t hytale-custom .
 ```
 
 Verfügbare Build-Argumente:
 - `DEBIAN_BASE_IMAGE` - Basis Debian-Image (Standard: `debian:bookworm-slim`)
 - `DEBIAN_CODENAME` - Debian Codename für Java-Repo (Standard: `bookworm`)
-- `JAVA_VERSION` - Eclipse Temurin Java-Version (Standard: `21`)
+- `JAVA_VERSION` - Eclipse Temurin Java-Version (Standard: `24`)
 
 ## Links
 
