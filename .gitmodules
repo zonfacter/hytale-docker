@@ -1,0 +1,3 @@
+[submodule "dashboard-source"]
+	path = dashboard-source
+	url = https://github.com/zonfacter/hytale-dashboard.git

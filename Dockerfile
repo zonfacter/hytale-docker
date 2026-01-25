@@ -49,7 +49,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     # Other utilities
     unzip \
-    git \
     procps \
     supervisor \
     gosu \
@@ -73,10 +72,10 @@ RUN groupadd -g ${PGID} hytale && \
     mkdir -p ${DASHBOARD_DIR} && \
     chown -R hytale:hytale ${HYTALE_DIR}
 
-# Clone and setup Dashboard
+# Copy Dashboard from submodule and setup
 WORKDIR ${DASHBOARD_DIR}
-RUN git clone --depth 1 https://github.com/zonfacter/hytale-dashboard.git . && \
-    python3 -m venv .venv && \
+COPY --chown=hytale:hytale dashboard-source/ .
+RUN python3 -m venv .venv && \
     .venv/bin/pip install --no-cache-dir --upgrade pip && \
     .venv/bin/pip install --no-cache-dir -r requirements.txt && \
     chown -R hytale:hytale ${DASHBOARD_DIR}
