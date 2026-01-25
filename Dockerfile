@@ -3,7 +3,12 @@
 # https://github.com/zonfacter/hytale-docker
 #===============================================================================
 
-FROM debian:bookworm-slim
+# Build arguments for customization
+ARG DEBIAN_BASE_IMAGE=debian:bookworm-slim
+ARG DEBIAN_CODENAME=bookworm
+ARG JAVA_VERSION=21
+
+FROM ${DEBIAN_BASE_IMAGE}
 
 LABEL maintainer="zonfacter"
 LABEL description="Hytale Dedicated Server with Web Dashboard"
@@ -48,11 +53,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Eclipse Temurin Java 21 (Adoptium)
+# Install Eclipse Temurin Java (Adoptium)
+# Use ARG to make Java version configurable during build
+ARG DEBIAN_CODENAME
+ARG JAVA_VERSION
 RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list \
+    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb ${DEBIAN_CODENAME} main" > /etc/apt/sources.list.d/adoptium.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends temurin-21-jre \
+    && apt-get install -y --no-install-recommends temurin-${JAVA_VERSION}-jre \
     && rm -rf /var/lib/apt/lists/*
 
 # Create users and directories

@@ -127,6 +127,48 @@ docker-compose up -d
 
 ---
 
+## Build Arguments & Platform Support
+
+### Supported Platforms
+
+This image supports multiple architectures:
+- **linux/amd64** (Intel/AMD 64-bit)
+- **linux/arm64** (ARM 64-bit, e.g., Apple Silicon, Raspberry Pi 4/5)
+
+Docker will automatically pull the correct image for your platform.
+
+### Custom Build Arguments
+
+You can customize the base image and Java version when building from source:
+
+```bash
+# Build with custom Debian version
+docker build \
+  --build-arg DEBIAN_BASE_IMAGE=debian:bullseye-slim \
+  --build-arg DEBIAN_CODENAME=bullseye \
+  --build-arg JAVA_VERSION=17 \
+  -t hytale-custom .
+```
+
+Available build arguments:
+- **DEBIAN_BASE_IMAGE**: Base Debian image (default: `debian:bookworm-slim`)
+- **DEBIAN_CODENAME**: Debian codename for Java repository (default: `bookworm`)
+- **JAVA_VERSION**: Eclipse Temurin Java version (default: `21`)
+
+Or configure in `docker-compose.yml`:
+
+```yaml
+build:
+  context: .
+  dockerfile: Dockerfile
+  args:
+    DEBIAN_BASE_IMAGE: debian:bookworm-slim
+    DEBIAN_CODENAME: bookworm
+    JAVA_VERSION: 21
+```
+
+---
+
 ## Ports
 
 | Port | Protocol | Description |
