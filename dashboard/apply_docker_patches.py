@@ -32,14 +32,14 @@ def apply_patches(dashboard_dir: Path):
     # Find the imports section and add our override imports
     import_marker = "from fastapi.security import HTTPBasic, HTTPBasicCredentials"
     if import_marker in content:
-        override_import = "\n# Docker-specific overrides\ntry:\n    from docker_overrides import (\n        get_service_status,\n        get_logs,\n        get_server_control_commands,\n        get_backup_frequency,\n        set_backup_frequency,\n    )\n    DOCKER_MODE = True\n    print(\"[Dashboard] Running in Docker mode with supervisord\")\nexcept ImportError:\n    DOCKER_MODE = False\n    print(\"[Dashboard] Running in bare-metal mode with systemd\")\n"
+        override_import = "\n# Docker-specific overrides\ntry:\n    from docker_overrides import (\n        get_service_status,\n        get_logs,\n        get_server_control_commands,\n        get_backup_frequency as docker_get_backup_frequency,\n        set_backup_frequency,\n    )\n    DOCKER_MODE = True\n    print(\"[Dashboard] Running in Docker mode with supervisord\")\nexcept ImportError:\n    DOCKER_MODE = False\n    print(\"[Dashboard] Running in bare-metal mode with systemd\")\n"
         content = content.replace(import_marker, import_marker + override_import)
     else:
         print("WARNING: Could not find import marker, trying alternative location", file=sys.stderr)
         # Try to add after the FastAPI imports
         import_marker = "from fastapi.templating import Jinja2Templates"
         if import_marker in content:
-            override_import = "\n# Docker-specific overrides\ntry:\n    from docker_overrides import (\n        get_service_status,\n        get_logs,\n        get_server_control_commands,\n        get_backup_frequency,\n        set_backup_frequency,\n    )\n    DOCKER_MODE = True\n    print(\"[Dashboard] Running in Docker mode with supervisord\")\nexcept ImportError:\n    DOCKER_MODE = False\n    print(\"[Dashboard] Running in bare-metal mode with systemd\")\n"
+            override_import = "\n# Docker-specific overrides\ntry:\n    from docker_overrides import (\n        get_service_status,\n        get_logs,\n        get_server_control_commands,\n        get_backup_frequency as docker_get_backup_frequency,\n        set_backup_frequency,\n    )\n    DOCKER_MODE = True\n    print(\"[Dashboard] Running in Docker mode with supervisord\")\nexcept ImportError:\n    DOCKER_MODE = False\n    print(\"[Dashboard] Running in bare-metal mode with systemd\")\n"
             content = content.replace(import_marker, import_marker + override_import)
     
     # Patch the get_service_status function (only if not overridden)
@@ -79,7 +79,7 @@ def apply_patches(dashboard_dir: Path):
         new_backup_func = 'def get_backup_frequency_systemd() -> int:\n    """Read current backup frequency from hytale.service (or override)."""'
         content = content.replace(old_backup_func, new_backup_func)
         
-        wrapper = '\n\ndef get_backup_frequency() -> int:\n    """Get backup frequency (Docker-aware)."""\n    if DOCKER_MODE:\n        from docker_overrides import get_backup_frequency as docker_get_backup_frequency\n        return docker_get_backup_frequency()\n    return get_backup_frequency_systemd()\n\n'
+        wrapper = '\n\ndef get_backup_frequency() -> int:\n    """Get backup frequency (Docker-aware)."""\n    if DOCKER_MODE:\n        return docker_get_backup_frequency()\n    return get_backup_frequency_systemd()\n\n'
         
         marker = 'def build_exec_start'
         if marker in content:
