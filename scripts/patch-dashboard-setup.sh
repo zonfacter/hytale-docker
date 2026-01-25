@@ -29,6 +29,12 @@ if grep -q "setup_routes" "$APP_FILE"; then
     exit 0
 fi
 
+# Validate that 'app' variable exists (FastAPI instance)
+if ! grep -q "app\s*=\s*FastAPI\|app\s*=\s*fastapi\.FastAPI\|^app\s*:" "$APP_FILE"; then
+    echo "[patch] WARNING: Could not find FastAPI app instance in $APP_FILE"
+    echo "[patch] The integration might fail at runtime"
+fi
+
 # Create a backup
 cp "$APP_FILE" "$APP_FILE.backup"
 
@@ -42,8 +48,10 @@ try:
     from setup_routes import router as setup_router
     app.include_router(setup_router)
     print("[Setup] Setup wizard routes integrated successfully")
-except Exception as e:
+except (ImportError, AttributeError, NameError) as e:
     print(f"[Setup] Warning: Could not integrate setup routes: {e}")
+except Exception as e:
+    print(f"[Setup] Error: Unexpected error during setup routes integration: {e}")
 EOFPATCH
 
 echo "[patch] ✓ Setup routes integrated successfully"
