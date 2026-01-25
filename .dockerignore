@@ -1,0 +1,41 @@
+# Git directories
+.git
+.github
+.gitignore
+.gitmodules
+
+# Data volumes
+data/
+
+# Docker files
+docker-compose.yml
+*.log
+
+# Documentation (not needed in image)
+*.md
+docs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Submodule unnecessary files
+dashboard-source/.git
+dashboard-source/.github
+dashboard-source/.gitignore
+dashboard-source/docs/
+dashboard-source/README.md
+dashboard-source/*.service
+dashboard-source/install.sh
+dashboard-source/hytale-update.sh
+dashboard-source/start-hytale.sh

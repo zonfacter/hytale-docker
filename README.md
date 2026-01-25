@@ -160,6 +160,10 @@ Docker will automatically pull the correct image for your platform.
 You can customize the base image and Java version when building from source:
 
 ```bash
+# Clone repository with submodules
+git clone --recurse-submodules https://github.com/zonfacter/hytale-docker.git
+cd hytale-docker
+
 # Build with custom Debian version
 docker build \
   --build-arg DEBIAN_BASE_IMAGE=debian:bullseye-slim \
@@ -183,6 +187,28 @@ build:
     DEBIAN_BASE_IMAGE: debian:bookworm-slim
     DEBIAN_CODENAME: bookworm
     JAVA_VERSION: 21
+```
+
+### Building from Source
+
+When building from source, the dashboard is included as a Git submodule. To clone the repository with all dependencies:
+
+```bash
+# Clone with submodules
+git clone --recurse-submodules https://github.com/zonfacter/hytale-docker.git
+
+# Or if already cloned, initialize submodules
+git submodule update --init --recursive
+```
+
+To update the dashboard to the latest version:
+
+```bash
+cd dashboard-source
+git pull origin master
+cd ..
+git add dashboard-source
+git commit -m "Update dashboard to latest version"
 ```
 
 ---
