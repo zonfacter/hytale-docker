@@ -230,6 +230,39 @@ async def api_console_output(user: str = Depends(verify_credentials), since: str
     return JSONResponse({"lines": lines})'''
         content = content.replace(old_console, new_console)
 
+    # Patch CF_API_KEY to use config file in Docker mode
+    old_cf_key = 'CF_API_KEY = os.environ.get("CF_API_KEY", "")'
+    if old_cf_key in content:
+        new_cf_key = '''CF_API_KEY = os.environ.get("CF_API_KEY", "")
+
+def get_cf_api_key_dynamic():
+    """Get CurseForge API key (Docker-aware: checks config file first)."""
+    if DOCKER_MODE:
+        try:
+            from docker_overrides import get_cf_api_key
+            key = get_cf_api_key()
+            if key:
+                return key
+        except ImportError:
+            pass
+    return CF_API_KEY'''
+        content = content.replace(old_cf_key, new_cf_key)
+
+    # Replace CF_API_KEY usage in cf_request with dynamic getter
+    old_cf_check = '''    if not CF_API_KEY:
+        raise HTTPException(status_code=500, detail="CurseForge API Key nicht konfiguriert (CF_API_KEY)")'''
+    if old_cf_check in content:
+        new_cf_check = '''    api_key = get_cf_api_key_dynamic() if DOCKER_MODE else CF_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=500, detail="CurseForge API Key nicht konfiguriert (CF_API_KEY)")'''
+        content = content.replace(old_cf_check, new_cf_check)
+
+    # Replace CF_API_KEY in request headers
+    old_cf_header = '"x-api-key": CF_API_KEY,'
+    if old_cf_header in content:
+        new_cf_header = '"x-api-key": api_key,'
+        content = content.replace(old_cf_header, new_cf_header)
+
     # Write the patched content
     app_py.write_text(content)
     print(f"✓ Successfully patched {app_py}")

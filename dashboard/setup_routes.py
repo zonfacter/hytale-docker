@@ -122,6 +122,90 @@ async def cancel_download():
     return JSONResponse({"ok": False, "message": "Kein Download aktiv / No download active"})
 
 
+# ============================================================================
+# Settings API (Runtime Configuration)
+# ============================================================================
+
+@router.get("/api/settings")
+async def get_settings():
+    """Get current runtime settings."""
+    try:
+        from docker_overrides import load_config, get_cf_api_key, get_downloader_url
+        config = load_config()
+        return JSONResponse({
+            "cf_api_key": "***" if config.get("cf_api_key") else "",  # Mask the key
+            "cf_api_key_set": bool(config.get("cf_api_key")),
+            "downloader_url": config.get("downloader_url", ""),
+        })
+    except ImportError:
+        # Not in Docker mode
+        return JSONResponse({
+            "error": "Settings nur im Docker-Modus verfügbar / Settings only available in Docker mode"
+        }, status_code=400)
+
+
+@router.post("/api/settings")
+async def update_settings(request: Request):
+    """Update runtime settings."""
+    try:
+        from docker_overrides import load_config, save_config
+    except ImportError:
+        return JSONResponse({
+            "error": "Settings nur im Docker-Modus verfügbar / Settings only available in Docker mode"
+        }, status_code=400)
+
+    body = await request.json()
+    config = load_config()
+
+    # Update only provided values
+    if "cf_api_key" in body and body["cf_api_key"] != "***":
+        config["cf_api_key"] = body["cf_api_key"]
+
+    if "downloader_url" in body:
+        config["downloader_url"] = body["downloader_url"]
+
+    if save_config(config):
+        return JSONResponse({"ok": True, "message": "Einstellungen gespeichert / Settings saved"})
+    else:
+        return JSONResponse({
+            "error": "Speichern fehlgeschlagen / Save failed"
+        }, status_code=500)
+
+
+@router.get("/api/settings/cf-status")
+async def check_cf_status():
+    """Check if CurseForge API key is valid."""
+    try:
+        from docker_overrides import get_cf_api_key
+        api_key = get_cf_api_key()
+    except ImportError:
+        api_key = os.environ.get("CF_API_KEY", "")
+
+    if not api_key:
+        return JSONResponse({
+            "valid": False,
+            "message": "Kein API-Key konfiguriert / No API key configured"
+        })
+
+    # Test the API key
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://api.curseforge.com/v1/games",
+            headers={"Accept": "application/json", "x-api-key": api_key}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                return JSONResponse({"valid": True, "message": "API-Key gültig / API key valid"})
+    except Exception as e:
+        return JSONResponse({
+            "valid": False,
+            "message": f"API-Key ungültig / API key invalid: {str(e)}"
+        })
+
+    return JSONResponse({"valid": False, "message": "Unbekannter Fehler / Unknown error"})
+
+
 # Auto-redirect to setup if server not installed
 async def check_setup_required(request: Request):
     """Middleware to redirect to setup if server is not installed."""

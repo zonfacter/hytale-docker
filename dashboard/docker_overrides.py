@@ -8,6 +8,7 @@ import subprocess
 import json
 from pathlib import Path
 from datetime import datetime, timezone
+from threading import Lock
 
 # Configuration
 SERVICE_NAME = "hytale-server"  # supervisord program name
@@ -15,6 +16,80 @@ SERVER_DIR = Path(os.environ.get("HYTALE_DIR", "/opt/hytale-server"))
 LOG_DIR = SERVER_DIR / "logs"
 LOG_LINES = 150
 DOWNLOAD_SCRIPT = "/usr/local/bin/hytale-download.sh"
+
+# Runtime config file (persisted in volume)
+CONFIG_FILE = SERVER_DIR / ".dashboard_config.json"
+_config_lock = Lock()
+_config_cache = None
+
+
+def load_config() -> dict:
+    """Load runtime configuration from file."""
+    global _config_cache
+
+    default_config = {
+        "cf_api_key": os.environ.get("CF_API_KEY", ""),
+        "downloader_url": os.environ.get("HYTALE_DOWNLOADER_URL", "https://downloader.hytale.com/hytale-downloader.zip"),
+    }
+
+    with _config_lock:
+        if _config_cache is not None:
+            # Merge with defaults (in case new keys added)
+            merged = {**default_config, **_config_cache}
+            return merged
+
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    _config_cache = json.load(f)
+                # Merge with defaults
+                merged = {**default_config, **_config_cache}
+                return merged
+            except (json.JSONDecodeError, PermissionError, OSError):
+                pass
+
+        _config_cache = default_config
+        return default_config
+
+
+def save_config(config: dict) -> bool:
+    """Save runtime configuration to file."""
+    global _config_cache
+
+    with _config_lock:
+        try:
+            # Ensure directory exists
+            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f, indent=2)
+            _config_cache = config
+            return True
+        except (PermissionError, OSError) as e:
+            print(f"[docker_overrides] Failed to save config: {e}")
+            return False
+
+
+def get_config_value(key: str, default=None):
+    """Get a single config value."""
+    config = load_config()
+    return config.get(key, default)
+
+
+def set_config_value(key: str, value) -> bool:
+    """Set a single config value."""
+    config = load_config()
+    config[key] = value
+    return save_config(config)
+
+
+def get_cf_api_key() -> str:
+    """Get CurseForge API key (from config or env)."""
+    return get_config_value("cf_api_key", "")
+
+
+def get_downloader_url() -> str:
+    """Get Hytale downloader URL (from config or env)."""
+    return get_config_value("downloader_url", "https://downloader.hytale.com/hytale-downloader.zip")
 
 
 def run_cmd(cmd: list[str], timeout: int = 10) -> tuple[str, int]:

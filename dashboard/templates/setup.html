@@ -251,6 +251,62 @@
       </div>
     </div>
 
+    <!-- Settings Section -->
+    <div class="step" id="settings-section" style="margin-top: 32px;">
+      <div class="step-header" style="cursor: pointer;" onclick="toggleSettings()">
+        <span class="step-number" style="background: var(--muted);">⚙</span>
+        <span class="step-title">
+          <span class="lang-de">Einstellungen (Optional)</span>
+          <span class="lang-en hidden">Settings (Optional)</span>
+        </span>
+        <span id="settings-toggle" style="margin-left: auto; font-size: 20px;">▼</span>
+      </div>
+      <div class="step-content" id="settings-content" style="display: none;">
+        <p class="muted" style="margin-bottom: 16px;">
+          <span class="lang-de">Diese Einstellungen können auch später im Dashboard geändert werden.</span>
+          <span class="lang-en hidden">These settings can also be changed later in the dashboard.</span>
+        </p>
+
+        <!-- CurseForge API Key -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+            <span class="lang-de">CurseForge API Key</span>
+            <span class="lang-en hidden">CurseForge API Key</span>
+          </label>
+          <input type="password" id="cf-api-key" placeholder="$2a$10$..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);" />
+          <p class="muted" style="margin-top: 4px; font-size: 12px;">
+            <span class="lang-de">Für Mod-Downloads von CurseForge. <a href="https://console.curseforge.com/" target="_blank">Key erstellen →</a></span>
+            <span class="lang-en hidden">For mod downloads from CurseForge. <a href="https://console.curseforge.com/" target="_blank">Get API key →</a></span>
+          </p>
+        </div>
+
+        <!-- Downloader URL -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+            <span class="lang-de">Downloader URL</span>
+            <span class="lang-en hidden">Downloader URL</span>
+          </label>
+          <input type="text" id="downloader-url" placeholder="https://downloader.hytale.com/hytale-downloader.zip" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);" />
+          <p class="muted" style="margin-top: 4px; font-size: 12px;">
+            <span class="lang-de">URL zum Hytale Downloader (normalerweise nicht ändern)</span>
+            <span class="lang-en hidden">URL to Hytale Downloader (usually don't change)</span>
+          </p>
+        </div>
+
+        <div class="actions" style="display: flex; gap: 8px; align-items: center;">
+          <button id="btn-save-settings" class="btn-control">
+            <span class="lang-de">Speichern</span>
+            <span class="lang-en hidden">Save</span>
+          </button>
+          <button id="btn-test-cf" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+            <span class="lang-de">CF-Key testen</span>
+            <span class="lang-en hidden">Test CF Key</span>
+          </button>
+          <span id="settings-status" class="muted" style="margin-left: 8px;"></span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -403,7 +459,95 @@
       // Initial check
       checkStatus();
       setInterval(checkStatus, 10000);
+
+      // Load settings on page load
+      loadSettings();
     })();
+
+    // Settings toggle
+    function toggleSettings() {
+      const content = document.getElementById('settings-content');
+      const toggle = document.getElementById('settings-toggle');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.textContent = '▲';
+      } else {
+        content.style.display = 'none';
+        toggle.textContent = '▼';
+      }
+    }
+
+    // Load settings
+    async function loadSettings() {
+      try {
+        const resp = await fetch('/api/settings');
+        const data = await resp.json();
+        if (data.cf_api_key_set) {
+          document.getElementById('cf-api-key').placeholder = '••••••••••••••••';
+        }
+        if (data.downloader_url) {
+          document.getElementById('downloader-url').value = data.downloader_url;
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+      }
+    }
+
+    // Save settings
+    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+      const status = document.getElementById('settings-status');
+      const cfKey = document.getElementById('cf-api-key').value;
+      const dlUrl = document.getElementById('downloader-url').value;
+
+      const body = {};
+      if (cfKey && cfKey !== '***') body.cf_api_key = cfKey;
+      if (dlUrl) body.downloader_url = dlUrl;
+
+      try {
+        const resp = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          status.style.color = 'var(--green)';
+          status.textContent = '✓ Gespeichert / Saved';
+          document.getElementById('cf-api-key').value = '';
+          document.getElementById('cf-api-key').placeholder = '••••••••••••••••';
+        } else {
+          status.style.color = 'var(--red)';
+          status.textContent = '✗ ' + (data.error || 'Fehler / Error');
+        }
+      } catch (e) {
+        status.style.color = 'var(--red)';
+        status.textContent = '✗ ' + e.message;
+      }
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    });
+
+    // Test CurseForge API key
+    document.getElementById('btn-test-cf').addEventListener('click', async () => {
+      const status = document.getElementById('settings-status');
+      status.style.color = 'var(--muted)';
+      status.textContent = 'Testing...';
+
+      try {
+        const resp = await fetch('/api/settings/cf-status');
+        const data = await resp.json();
+        if (data.valid) {
+          status.style.color = 'var(--green)';
+          status.textContent = '✓ ' + data.message;
+        } else {
+          status.style.color = 'var(--red)';
+          status.textContent = '✗ ' + data.message;
+        }
+      } catch (e) {
+        status.style.color = 'var(--red)';
+        status.textContent = '✗ ' + e.message;
+      }
+      setTimeout(() => { status.textContent = ''; }, 5000);
+    });
   </script>
 </body>
 </html>
