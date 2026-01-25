@@ -38,11 +38,12 @@ services:
       context: .
       dockerfile: Dockerfile
       # Build arguments for customization (optional)
+      # Default: Debian Trixie + Java 24 (required for AOTCache)
       # Uncomment and modify to use different base images or Java versions
       # args:
-      #   DEBIAN_BASE_IMAGE: debian:bookworm-slim
-      #   DEBIAN_CODENAME: bookworm
-      #   JAVA_VERSION: 21
+      #   DEBIAN_BASE_IMAGE: debian:trixie-slim
+      #   DEBIAN_CODENAME: trixie
+      #   JAVA_VERSION: 24
 
     # Ports
     ports:
@@ -72,6 +73,7 @@ services:
 
       # Optional: CurseForge API Key for mod downloads
       # Get your free key at: https://console.curseforge.com/
+      # TIP: Can also be configured later via Dashboard → Setup → Settings
       - CF_API_KEY=
 
       # User/Group IDs (for file permissions)

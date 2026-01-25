@@ -15,13 +15,14 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 
 ## Features
 
-- 🎮 **Hytale Dedicated Server** - Ready to run
+- 🎮 **Hytale Dedicated Server** - Ready to run with Java 24
 - 🖥️ **Web Dashboard** - Manage your server via browser
 - 🔧 **Setup Wizard** - Guided installation with OAuth support
 - ⬇️ **Automatic Downloader** - Server files downloaded automatically
 - 📦 **CurseForge Integration** - Install mods with one click
 - 💾 **Automatic Backups** - Built-in backup system
-- 🔄 **Easy Updates** - One command to update
+- ⚙️ **Runtime Settings** - Configure API keys without container restart
+- 🚀 **AOTCache Support** - Faster server startup with Java 24
 
 ![Setup Wizard](docs/screenshots/setup-wizard.png)
 
@@ -177,18 +178,23 @@ You can customize the base image and Java version when building from source:
 git clone --recurse-submodules https://github.com/zonfacter/hytale-docker.git
 cd hytale-docker
 
-# Build with custom Debian version
+# Build with default settings (Trixie + Java 24)
+docker build -t hytale-custom .
+
+# Or with custom Debian/Java version
 docker build \
-  --build-arg DEBIAN_BASE_IMAGE=debian:bullseye-slim \
-  --build-arg DEBIAN_CODENAME=bullseye \
-  --build-arg JAVA_VERSION=17 \
+  --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
+  --build-arg DEBIAN_CODENAME=bookworm \
+  --build-arg JAVA_VERSION=21 \
   -t hytale-custom .
 ```
 
 Available build arguments:
-- **DEBIAN_BASE_IMAGE**: Base Debian image (default: `debian:bookworm-slim`)
-- **DEBIAN_CODENAME**: Debian codename for Java repository (default: `bookworm`)
-- **JAVA_VERSION**: Eclipse Temurin Java version (default: `21`)
+- **DEBIAN_BASE_IMAGE**: Base Debian image (default: `debian:trixie-slim`)
+- **DEBIAN_CODENAME**: Debian codename for Java repository (default: `trixie`)
+- **JAVA_VERSION**: Eclipse Temurin Java version (default: `24`)
+
+> ⚠️ **Note:** Java 24 is required for the Hytale Server's AOTCache feature (faster startup).
 
 Or configure in `docker-compose.yml`:
 
@@ -197,9 +203,9 @@ build:
   context: .
   dockerfile: Dockerfile
   args:
-    DEBIAN_BASE_IMAGE: debian:bookworm-slim
-    DEBIAN_CODENAME: bookworm
-    JAVA_VERSION: 21
+    DEBIAN_BASE_IMAGE: debian:trixie-slim
+    DEBIAN_CODENAME: trixie
+    JAVA_VERSION: 24
 ```
 
 ### Building from Source
@@ -313,16 +319,35 @@ docker-compose exec hytale bash
 
 ---
 
+## Runtime Settings
+
+You can configure settings **after** container creation without recreating the container:
+
+1. Open the Dashboard → Setup page
+2. Scroll down to "Settings (Optional)"
+3. Enter your CurseForge API Key or custom Downloader URL
+4. Click "Save"
+
+Settings are stored in `/opt/hytale-server/.dashboard_config.json` (persisted in volume).
+
+This is especially useful for NAS systems (like UGREEN) where you can't easily pass environment variables during container creation.
+
+---
+
 ## CurseForge Integration
 
 Install mods directly from CurseForge:
 
+**Option 1: Via Environment Variable**
+```yaml
+environment:
+  - CF_API_KEY=your-api-key
+```
+
+**Option 2: Via Dashboard (Runtime)**
 1. Get a free API key: [console.curseforge.com](https://console.curseforge.com/)
-2. Add to `docker-compose.yml`:
-   ```yaml
-   - CF_API_KEY=your-api-key
-   ```
-3. Restart container
+2. Open Dashboard → Setup → Settings
+3. Enter your API key and click "Save"
 4. Browse & install mods via Dashboard → Manage → CurseForge
 
 ---
