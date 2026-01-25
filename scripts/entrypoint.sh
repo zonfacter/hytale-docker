@@ -12,6 +12,14 @@ echo "║           https://github.com/zonfacter/hytale-docker           ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
+# Create directories if not exists (before setting permissions)
+echo "[entrypoint] Ensuring directory structure..."
+mkdir -p ${HYTALE_DIR}/logs
+mkdir -p ${HYTALE_DIR}/mods
+mkdir -p ${HYTALE_DIR}/backups
+mkdir -p ${HYTALE_DIR}/.downloader
+mkdir -p /var/log/supervisor
+
 # Fix permissions for volumes
 echo "[entrypoint] Setting up permissions..."
 chown -R hytale:hytale ${HYTALE_DIR}/universe || true
@@ -19,6 +27,31 @@ chown -R hytale:hytale ${HYTALE_DIR}/mods || true
 chown -R hytale:hytale ${HYTALE_DIR}/backups || true
 chown -R hytale:hytale ${HYTALE_DIR}/.downloader || true
 chown -R hytale:hytale ${HYTALE_DIR}/logs || true
+
+# Create default world config directory structure if not exists
+# (needed because the 'universe' volume overrides what Dockerfile created)
+WORLD_CONFIG_DIR="${HYTALE_DIR}/universe/worlds/default"
+WORLD_CONFIG_FILE="${WORLD_CONFIG_DIR}/config.json"
+if [ ! -d "$WORLD_CONFIG_DIR" ]; then
+    echo "[entrypoint] Creating default world directory structure..."
+    mkdir -p "$WORLD_CONFIG_DIR"
+    chown -R hytale:hytale "${HYTALE_DIR}/universe"
+fi
+if [ ! -f "$WORLD_CONFIG_FILE" ]; then
+    echo "[entrypoint] Creating default world config..."
+    cat > "$WORLD_CONFIG_FILE" << 'EOFCONFIG'
+{
+  "Version": 1,
+  "Name": "default",
+  "GameMode": "Adventure",
+  "Seed": "",
+  "WorldGenerator": {
+    "Type": "Hytale"
+  }
+}
+EOFCONFIG
+    chown hytale:hytale "$WORLD_CONFIG_FILE"
+fi
 
 # Try to fetch downloader if not present
 echo "[entrypoint] Checking Hytale downloader..."
@@ -32,10 +65,6 @@ if [ -f "${HYTALE_DIR}/.downloader/fetch.sh" ]; then
         echo "[entrypoint] See setup instructions in dashboard at http://localhost:${DASHBOARD_PORT}/setup"
     fi
 fi
-
-# Create log directory if not exists
-mkdir -p ${HYTALE_DIR}/logs
-mkdir -p /var/log/supervisor
 
 # Prepare supervisord configuration in writable location
 # This allows the configuration to work in read-only containers
