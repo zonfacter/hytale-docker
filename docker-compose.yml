@@ -7,6 +7,27 @@
 #
 # Dashboard öffnen / Open Dashboard:
 #   http://localhost:8088
+#
+#===============================================================================
+# WICHTIG / IMPORTANT: Volume Configuration
+#===============================================================================
+# Diese Konfiguration verwendet standardmäßig benannte Volumes (named volumes).
+# Dies ist die empfohlene Methode für Produktionssysteme, da sie:
+# - Unabhängig vom Arbeitsverzeichnis sind
+# - Besser von Docker verwaltet werden
+# - Konsistent über verschiedene Betriebssysteme hinweg funktionieren
+#
+# This configuration uses named volumes by default. This is the recommended
+# method for production systems because they:
+# - Are independent of the working directory
+# - Are better managed by Docker
+# - Work consistently across different operating systems
+#
+# Alternative Optionen / Alternative options:
+# 1. Bind Mounts mit relativen Pfaden - siehe Zeile 81
+#    Bind mounts with relative paths - see line 81
+# 2. Bind Mounts mit absoluten Pfaden - siehe Zeile 93
+#    Bind mounts with absolute paths - see line 93
 #===============================================================================
 
 services:
@@ -61,24 +82,44 @@ services:
       - TZ=Europe/Berlin
 
     # Persistent Data Volumes
+    # Using named volumes (recommended for production and portability)
     volumes:
       # Game world data (players, buildings, etc.)
-      - ./data/universe:/opt/hytale-server/universe
+      - hytale-universe:/opt/hytale-server/universe
 
       # Installed mods
-      - ./data/mods:/opt/hytale-server/mods
+      - hytale-mods:/opt/hytale-server/mods
 
       # Backup files
-      - ./data/backups:/opt/hytale-server/backups
+      - hytale-backups:/opt/hytale-server/backups
 
       # Downloader & credentials (for OAuth)
-      - ./data/downloader:/opt/hytale-server/.downloader
-
-      # Server configuration
-      - ./data/config.json:/opt/hytale-server/config.json
+      - hytale-downloader:/opt/hytale-server/.downloader
 
       # Logs (optional)
-      - ./data/logs:/opt/hytale-server/logs
+      - hytale-logs:/opt/hytale-server/logs
+
+    # Alternative: Bind mounts with relative paths
+    # Use this if you need direct host file system access (e.g., for backups or config editing)
+    # IMPORTANT: Must run docker-compose from the repository root directory
+    # For production, consider using absolute paths instead
+    # volumes:
+    #   - ./data/universe:/opt/hytale-server/universe
+    #   - ./data/mods:/opt/hytale-server/mods
+    #   - ./data/backups:/opt/hytale-server/backups
+    #   - ./data/downloader:/opt/hytale-server/.downloader
+    #   - ./data/config.json:/opt/hytale-server/config.json
+    #   - ./data/logs:/opt/hytale-server/logs
+
+    # Alternative: Bind mounts with absolute paths (most reliable for production)
+    # Replace /path/to/hytale-data with your actual data directory path
+    # volumes:
+    #   - /path/to/hytale-data/universe:/opt/hytale-server/universe
+    #   - /path/to/hytale-data/mods:/opt/hytale-server/mods
+    #   - /path/to/hytale-data/backups:/opt/hytale-server/backups
+    #   - /path/to/hytale-data/downloader:/opt/hytale-server/.downloader
+    #   - /path/to/hytale-data/config.json:/opt/hytale-server/config.json
+    #   - /path/to/hytale-data/logs:/opt/hytale-server/logs
 
     # Restart Policy
     restart: unless-stopped
@@ -96,10 +137,16 @@ services:
     stop_grace_period: 60s
 
 #===============================================================================
-# Volumes (alternative: named volumes instead of bind mounts)
+# Named Volumes Definition
 #===============================================================================
-# volumes:
-#   hytale-universe:
-#   hytale-mods:
-#   hytale-backups:
-#   hytale-downloader:
+volumes:
+  hytale-universe:
+    driver: local
+  hytale-mods:
+    driver: local
+  hytale-backups:
+    driver: local
+  hytale-downloader:
+    driver: local
+  hytale-logs:
+    driver: local

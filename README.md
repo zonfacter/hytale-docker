@@ -32,23 +32,39 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 # Pull image
 docker pull zonfacter/hytale-docker:latest
 
-# Create data directory
-mkdir -p hytale-data/{universe,mods,backups,downloader}
-
-# Run container
+# Run container with named volumes (recommended)
 docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
-  -v ./hytale-data/universe:/opt/hytale-server/universe \
-  -v ./hytale-data/mods:/opt/hytale-server/mods \
-  -v ./hytale-data/backups:/opt/hytale-server/backups \
-  -v ./hytale-data/downloader:/opt/hytale-server/.downloader \
+  -v hytale-universe:/opt/hytale-server/universe \
+  -v hytale-mods:/opt/hytale-server/mods \
+  -v hytale-backups:/opt/hytale-server/backups \
+  -v hytale-downloader:/opt/hytale-server/.downloader \
   -e DASH_PASS=changeme \
   zonfacter/hytale-docker:latest
 
 # Open dashboard
 # http://localhost:8088/setup
+```
+
+**Alternative:** If you prefer bind mounts for direct file access:
+
+```bash
+# Create data directory
+mkdir -p hytale-data/{universe,mods,backups,downloader}
+
+# Run container with bind mounts
+docker run -d \
+  --name hytale-server \
+  -p 8088:8088 \
+  -p 5520:5520/udp \
+  -v $(pwd)/hytale-data/universe:/opt/hytale-server/universe \
+  -v $(pwd)/hytale-data/mods:/opt/hytale-server/mods \
+  -v $(pwd)/hytale-data/backups:/opt/hytale-server/backups \
+  -v $(pwd)/hytale-data/downloader:/opt/hytale-server/.downloader \
+  -e DASH_PASS=changeme \
+  zonfacter/hytale-docker:latest
 ```
 
 ### Option 2: Using Docker Compose
@@ -225,13 +241,54 @@ git commit -m "Update dashboard to latest version"
 
 ## Volumes
 
-| Path | Description |
-|------|-------------|
-| `./data/universe` | World data (players, builds) |
-| `./data/mods` | Installed mods |
-| `./data/backups` | Backup files |
-| `./data/downloader` | Downloader & OAuth credentials |
-| `./data/config.json` | Server configuration |
+Data is stored in Docker-managed named volumes by default (recommended for production):
+
+| Volume Name | Container Path | Description |
+|-------------|----------------|-------------|
+| `hytale-universe` | `/opt/hytale-server/universe` | World data (players, builds) |
+| `hytale-mods` | `/opt/hytale-server/mods` | Installed mods |
+| `hytale-backups` | `/opt/hytale-server/backups` | Backup files |
+| `hytale-downloader` | `/opt/hytale-server/.downloader` | Downloader & OAuth credentials |
+| `hytale-logs` | `/opt/hytale-server/logs` | Server logs |
+
+### Volume Configuration Options
+
+The default configuration uses **named volumes**, which are recommended because:
+- ✅ Independent of working directory
+- ✅ Better managed by Docker
+- ✅ Consistent across different operating systems
+- ✅ Easier to backup and migrate
+
+#### Alternative 1: Bind Mounts with Relative Paths
+
+If you need direct file system access (e.g., for manual backups), you can use bind mounts with relative paths. Edit `docker-compose.yml` and uncomment the relative path section (around line 85).
+
+⚠️ **Important:** You must always run `docker-compose` from the repository root directory, or the data will be stored in unexpected locations.
+
+#### Alternative 2: Bind Mounts with Absolute Paths
+
+For production environments with specific storage requirements, use absolute paths. Edit `docker-compose.yml` and uncomment the absolute path section (around line 95), replacing `/path/to/hytale-data` with your actual data directory.
+
+This is the most reliable option for production as it explicitly defines where data is stored.
+
+### Managing Named Volumes
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect a volume to see where data is stored
+docker volume inspect hytale-universe
+
+# Backup a volume (example for universe)
+docker run --rm -v hytale-universe:/data -v $(pwd):/backup ubuntu tar czf /backup/universe-backup.tar.gz -C /data .
+
+# Restore a volume
+docker run --rm -v hytale-universe:/data -v $(pwd):/backup ubuntu tar xzf /backup/universe-backup.tar.gz -C /data
+
+# Remove all volumes (WARNING: deletes all data!)
+docker-compose down -v
+```
 
 ---
 
@@ -285,13 +342,18 @@ Install mods directly from CurseForge:
 ## Troubleshooting
 
 ### Downloader not found
-- **Manual setup**: Copy `hytale-downloader-linux-amd64` to `./data/downloader/`
+**With named volumes (default):**
+- Check if file exists in volume: `docker run --rm -v hytale-downloader:/downloader ubuntu ls -la /downloader/`
+- Copy file to volume: `docker run --rm -v hytale-downloader:/downloader -v $(pwd):/host ubuntu cp /host/hytale-downloader-linux-amd64 /downloader/`
 - **Automatic setup**: Set `HYTALE_DOWNLOADER_URL` in `docker-compose.yml` to your hosted downloader URL
+
+**With bind mounts:**
+- **Manual setup**: Copy `hytale-downloader-linux-amd64` to `./data/downloader/`
 - Check container logs: `docker-compose logs hytale` to see fetch attempts
 
 ### OAuth link doesn't appear
 - Click "Refresh Log" in the setup wizard
-- Check if downloader file exists in `./data/downloader/`
+- Check if downloader file exists (see "Downloader not found" above)
 
 ### Server won't start
 - Check logs: `docker-compose logs hytale`
@@ -299,7 +361,8 @@ Install mods directly from CurseForge:
 - Verify server files were extracted correctly
 
 ### Mods not loading
-- JAR files must be directly in `./data/mods/` (not in subfolders)
+- **With named volumes**: Mods can be added via the Dashboard's CurseForge integration or copied to volume using: `docker run --rm -v hytale-mods:/mods -v $(pwd):/host ubuntu cp /host/your-mod.jar /mods/`
+- **With bind mounts**: JAR files must be directly in `./data/mods/` (not in subfolders)
 - Restart server after installing mods
 
 ### Console commands not working / FIFO issues
