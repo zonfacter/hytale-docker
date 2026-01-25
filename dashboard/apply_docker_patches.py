@@ -2,6 +2,14 @@
 """
 Apply Docker-specific patches to the Hytale Dashboard.
 This script modifies the cloned dashboard's app.py to use supervisord instead of systemd.
+
+Note: This patching approach uses string matching, which makes it somewhat fragile to
+changes in the upstream dashboard code. However, it's a pragmatic solution that:
+1. Avoids forking the entire dashboard repository
+2. Allows using the official dashboard releases
+3. Makes minimal modifications only where needed for Docker compatibility
+
+If the upstream dashboard adds Docker support natively, this patching can be removed.
 """
 
 import sys
@@ -60,10 +68,10 @@ def apply_patches(dashboard_dir: Path):
         
         marker = '    return output.splitlines()'
         # Find the right occurrence (in get_logs function)
-        parts = content.split(marker)
-        if len(parts) >= 2:
+        parts = content.split(marker, 1)  # Split only on first occurrence
+        if len(parts) == 2:
             # Insert after the first occurrence in get_logs
-            content = parts[0] + marker + wrapper + marker.join(parts[1:])
+            content = parts[0] + marker + wrapper + parts[1]
     
     # Patch the api_server_action function to use supervisorctl
     old_allowed = '    allowed = {\n        "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],\n        "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],\n        "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],\n    }'

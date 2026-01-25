@@ -16,7 +16,16 @@ LOG_LINES = 150
 
 
 def run_cmd(cmd: list[str], timeout: int = 10) -> tuple[str, int]:
-    """Run a subprocess and return (stdout+stderr, returncode)."""
+    """
+    Run a subprocess and return (stdout+stderr, returncode).
+    
+    Args:
+        cmd: Command and arguments as a list
+        timeout: Timeout in seconds
+        
+    Returns:
+        tuple: (combined output string, return code int)
+    """
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         output = result.stdout
@@ -70,8 +79,9 @@ def get_service_status() -> dict:
                 pid = parts[i + 1].rstrip(",")
                 break
         data["MainPID"] = pid
-        # For supervisor, we don't have exact start time easily, use current time
-        data["StartTime"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        # Note: supervisorctl doesn't provide exact start timestamp in standard output
+        # The uptime is available but converting it to a timestamp would be imprecise
+        data["StartTime"] = "running"
     elif status == "STOPPED":
         data["ActiveState"] = "inactive"
         data["SubState"] = "dead"
