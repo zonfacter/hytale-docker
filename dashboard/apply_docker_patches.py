@@ -117,7 +117,7 @@ def apply_patches(dashboard_dir: Path):
             markers_list = ", ".join(marker_candidates)
             print(
                 "WARNING: Could not find marker for backup frequency wrapper. "
-                f"Tried: {markers_list}. Backup frequency will continue to use systemd.",
+                f"Tried: {markers_list}. Docker-aware wrapper could not be installed.",
                 file=sys.stderr,
             )
     
