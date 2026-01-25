@@ -2,6 +2,7 @@
 #===============================================================================
 # Hytale Downloader Fetch Script
 # Attempts to automatically download the Hytale downloader if URL is provided
+# Supports both direct binary downloads and ZIP archives
 #===============================================================================
 
 set -e
@@ -9,7 +10,7 @@ set -e
 # Configuration
 DOWNLOADER_DIR="${DOWNLOADER_DIR:-/opt/hytale-server/.downloader}"
 DOWNLOADER_BIN="${DOWNLOADER_BIN:-${DOWNLOADER_DIR}/hytale-downloader-linux-amd64}"
-DOWNLOADER_URL="${HYTALE_DOWNLOADER_URL:-}"
+DOWNLOADER_URL="${HYTALE_DOWNLOADER_URL:-https://downloader.hytale.com/hytale-downloader.zip}"
 MIN_FILE_SIZE="${MIN_FILE_SIZE:-1000000}"  # Minimum expected file size (1MB)
 
 log() {
@@ -42,11 +43,7 @@ if [ -z "$DOWNLOADER_URL" ]; then
     log ""
     log "Option 2: Automatischer Download / Automatic Download"
     log "  Setze die Umgebungsvariable / Set environment variable:"
-    log "  HYTALE_DOWNLOADER_URL=https://your-url/hytale-downloader-linux-amd64"
-    log ""
-    log "  Beispiel in docker-compose.yml:"
-    log "  environment:"
-    log "    - HYTALE_DOWNLOADER_URL=https://example.com/downloader"
+    log "  HYTALE_DOWNLOADER_URL=https://downloader.hytale.com/hytale-downloader.zip"
     log ""
     log "═══════════════════════════════════════════════════════════════"
     log ""
@@ -61,22 +58,93 @@ log ""
 # Create directory if not exists
 mkdir -p "$DOWNLOADER_DIR"
 
-# Download with wget or curl
-if command -v wget &> /dev/null; then
-    log "Verwende wget / Using wget..."
-    wget -O "$DOWNLOADER_BIN" "$DOWNLOADER_URL" || {
-        log "✗ Download mit wget fehlgeschlagen / wget download failed"
-        exit 1
-    }
-elif command -v curl &> /dev/null; then
-    log "Verwende curl / Using curl..."
-    curl -L -o "$DOWNLOADER_BIN" "$DOWNLOADER_URL" || {
-        log "✗ Download mit curl fehlgeschlagen / curl download failed"
-        exit 1
-    }
+# Determine if URL is a ZIP file
+IS_ZIP=false
+if [[ "$DOWNLOADER_URL" == *.zip ]] || [[ "$DOWNLOADER_URL" == *".zip?"* ]]; then
+    IS_ZIP=true
+    DOWNLOAD_TARGET="${DOWNLOADER_DIR}/hytale-downloader.zip"
 else
-    log "✗ Weder wget noch curl verfügbar / Neither wget nor curl available"
+    DOWNLOAD_TARGET="$DOWNLOADER_BIN"
+fi
+
+# Download with wget or curl
+download_file() {
+    local url="$1"
+    local target="$2"
+
+    if command -v wget &> /dev/null; then
+        log "Verwende wget / Using wget..."
+        wget -q --show-progress -O "$target" "$url" || {
+            log "✗ Download mit wget fehlgeschlagen / wget download failed"
+            return 1
+        }
+    elif command -v curl &> /dev/null; then
+        log "Verwende curl / Using curl..."
+        curl -L -o "$target" "$url" || {
+            log "✗ Download mit curl fehlgeschlagen / curl download failed"
+            return 1
+        }
+    else
+        log "✗ Weder wget noch curl verfügbar / Neither wget nor curl available"
+        return 1
+    fi
+    return 0
+}
+
+# Download the file
+if ! download_file "$DOWNLOADER_URL" "$DOWNLOAD_TARGET"; then
     exit 1
+fi
+
+# Handle ZIP extraction
+if [ "$IS_ZIP" = true ]; then
+    log "ZIP-Archiv erkannt, entpacke... / ZIP archive detected, extracting..."
+
+    if ! command -v unzip &> /dev/null; then
+        log "✗ unzip nicht verfügbar / unzip not available"
+        exit 1
+    fi
+
+    # Create temp directory for extraction
+    EXTRACT_DIR="${DOWNLOADER_DIR}/.extract_tmp"
+    rm -rf "$EXTRACT_DIR"
+    mkdir -p "$EXTRACT_DIR"
+
+    # Extract ZIP
+    unzip -q "$DOWNLOAD_TARGET" -d "$EXTRACT_DIR" || {
+        log "✗ Entpacken fehlgeschlagen / Extraction failed"
+        rm -rf "$EXTRACT_DIR"
+        exit 1
+    }
+
+    # Find the linux-amd64 binary
+    FOUND_BIN=""
+    for pattern in "hytale-downloader-linux-amd64" "hytale-downloader" "*linux*amd64*" "*downloader*"; do
+        FOUND_BIN=$(find "$EXTRACT_DIR" -type f -name "$pattern" 2>/dev/null | head -1)
+        if [ -n "$FOUND_BIN" ] && [ -f "$FOUND_BIN" ]; then
+            break
+        fi
+    done
+
+    if [ -z "$FOUND_BIN" ] || [ ! -f "$FOUND_BIN" ]; then
+        log "✗ Konnte Downloader-Binary nicht im ZIP finden"
+        log "✗ Could not find downloader binary in ZIP"
+        log "ZIP-Inhalt / ZIP contents:"
+        find "$EXTRACT_DIR" -type f | head -20
+        rm -rf "$EXTRACT_DIR"
+        exit 1
+    fi
+
+    log "Gefunden / Found: $(basename "$FOUND_BIN")"
+
+    # Move binary to correct location
+    mv "$FOUND_BIN" "$DOWNLOADER_BIN"
+
+    # Cleanup
+    rm -rf "$EXTRACT_DIR"
+    rm -f "$DOWNLOAD_TARGET"
+
+    log "✓ ZIP entpackt und aufgeräumt / ZIP extracted and cleaned up"
 fi
 
 # Verify download
@@ -87,7 +155,6 @@ if [ ! -f "$DOWNLOADER_BIN" ]; then
 fi
 
 # Check file size (should be at least MIN_FILE_SIZE for a valid binary)
-# Try GNU stat first, then BSD stat, with proper error handling
 FILE_SIZE=0
 if stat --version >/dev/null 2>&1; then
     # GNU stat

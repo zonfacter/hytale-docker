@@ -60,10 +60,10 @@ services:
       - HYTALE_MEMORY_MAX=4G
 
       # Downloader Settings
-      # Optional: Provide URL to automatically download the Hytale downloader
-      # If not set, you must manually copy the downloader to ./data/downloader/
-      # Example: - HYTALE_DOWNLOADER_URL=https://your-server.com/hytale-downloader-linux-amd64
-      - HYTALE_DOWNLOADER_URL=
+      # URL to automatically download the Hytale downloader (ZIP supported)
+      # Default: https://downloader.hytale.com/hytale-downloader.zip
+      # Leave empty to use the default URL, or set custom URL
+      - HYTALE_DOWNLOADER_URL=https://downloader.hytale.com/hytale-downloader.zip
 
       # Dashboard Settings
       - DASH_USER=admin
