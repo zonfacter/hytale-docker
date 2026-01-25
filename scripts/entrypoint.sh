@@ -20,6 +20,11 @@ mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 mkdir -p /var/log/supervisor
 
+# Ensure scripts are executable (in case permissions were lost)
+echo "[entrypoint] Ensuring script permissions..."
+chmod +x ${HYTALE_DIR}/start.sh 2>/dev/null || true
+chmod +x /usr/local/bin/hytale-*.sh 2>/dev/null || true
+
 # Fix permissions for volumes
 echo "[entrypoint] Setting up permissions..."
 chown -R hytale:hytale ${HYTALE_DIR}/universe || true
