@@ -1,0 +1,93 @@
+#===============================================================================
+# Hytale Server + Dashboard - Docker Compose
+# https://github.com/zonfacter/hytale-docker
+#
+# Schnellstart / Quick Start:
+#   docker-compose up -d
+#
+# Dashboard öffnen / Open Dashboard:
+#   http://localhost:8088
+#===============================================================================
+
+services:
+  hytale:
+    image: zonfacter/hytale-docker:latest
+    container_name: hytale-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Ports
+    ports:
+      # Dashboard Web-Interface
+      - "8088:8088/tcp"
+      # Hytale Game Server
+      - "5520:5520/udp"
+      # Nitrado WebServer API (for plugins)
+      - "5523:5523/tcp"
+
+    # Environment Variables
+    environment:
+      # Server Settings
+      - HYTALE_MEMORY_MIN=2G
+      - HYTALE_MEMORY_MAX=4G
+
+      # Dashboard Settings
+      - DASH_USER=admin
+      - DASH_PASS=changeme          # CHANGE THIS!
+      - ALLOW_CONTROL=true
+
+      # Optional: CurseForge API Key for mod downloads
+      # Get your free key at: https://console.curseforge.com/
+      - CF_API_KEY=
+
+      # User/Group IDs (for file permissions)
+      - PUID=1000
+      - PGID=1000
+
+      # Timezone
+      - TZ=Europe/Berlin
+
+    # Persistent Data Volumes
+    volumes:
+      # Game world data (players, buildings, etc.)
+      - ./data/universe:/opt/hytale-server/universe
+
+      # Installed mods
+      - ./data/mods:/opt/hytale-server/mods
+
+      # Backup files
+      - ./data/backups:/opt/hytale-server/backups
+
+      # Downloader & credentials (for OAuth)
+      - ./data/downloader:/opt/hytale-server/.downloader
+
+      # Server configuration
+      - ./data/config.json:/opt/hytale-server/config.json
+
+      # Logs (optional)
+      - ./data/logs:/opt/hytale-server/logs
+
+    # Restart Policy
+    restart: unless-stopped
+
+    # Resource Limits (optional, adjust as needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 6G
+    #     reservations:
+    #       memory: 4G
+
+    # Stop gracefully (SIGINT for proper save)
+    stop_signal: SIGINT
+    stop_grace_period: 60s
+
+#===============================================================================
+# Volumes (alternative: named volumes instead of bind mounts)
+#===============================================================================
+# volumes:
+#   hytale-universe:
+#   hytale-mods:
+#   hytale-backups:
+#   hytale-downloader:

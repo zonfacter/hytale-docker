@@ -1,0 +1,9 @@
+{
+  "Version": 1,
+  "Name": "default",
+  "GameMode": "Adventure",
+  "Seed": "",
+  "WorldGenerator": {
+    "Type": "Hytale"
+  }
+}

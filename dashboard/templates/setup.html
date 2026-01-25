@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hytale Server - Ersteinrichtung / Setup</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .setup-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .setup-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .setup-header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .lang-switch {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .lang-btn {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lang-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    .step-number.done {
+      background: var(--green);
+    }
+    .step-number.pending {
+      background: var(--muted);
+    }
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .step-content {
+      margin-left: 44px;
+    }
+    .download-log {
+      background: #080c10;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 300px;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+    .download-log .oauth-link {
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .download-log .error {
+      color: var(--red);
+    }
+    .download-log .success {
+      color: var(--green);
+    }
+    .info-box {
+      background: rgba(59,130,246,0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .warning-box {
+      background: rgba(234,179,8,0.1);
+      border: 1px solid var(--yellow);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .success-box {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      text-align: center;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="setup-container">
+    <div class="setup-header">
+      <h1>🎮 Hytale Server Setup</h1>
+      <p class="muted" id="subtitle-de">Ersteinrichtung des Servers</p>
+      <p class="muted hidden" id="subtitle-en">Initial Server Setup</p>
+    </div>
+
+    <!-- Language Switch -->
+    <div class="lang-switch">
+      <button class="lang-btn active" data-lang="de">Deutsch</button>
+      <button class="lang-btn" data-lang="en">English</button>
+    </div>
+
+    <!-- Step 1: Downloader -->
+    <div class="step" id="step1">
+      <div class="step-header">
+        <span class="step-number" id="step1-num">1</span>
+        <span class="step-title">
+          <span class="lang-de">Hytale Downloader bereitstellen</span>
+          <span class="lang-en hidden">Provide Hytale Downloader</span>
+        </span>
+      </div>
+      <div class="step-content">
+        <p class="lang-de">
+          Der Hytale Downloader wird benötigt, um den Server herunterzuladen.
+        </p>
+        <p class="lang-en hidden">
+          The Hytale Downloader is required to download the server files.
+        </p>
+
+        <div class="info-box">
+          <strong class="lang-de">So geht's:</strong>
+          <strong class="lang-en hidden">How to:</strong>
+          <ol style="margin: 8px 0 0 20px;">
+            <li class="lang-de">Besuche <a href="https://hytale.com/" target="_blank">hytale.com</a></li>
+            <li class="lang-en hidden">Visit <a href="https://hytale.com/" target="_blank">hytale.com</a></li>
+            <li class="lang-de">Lade den Server-Downloader für Linux herunter</li>
+            <li class="lang-en hidden">Download the server downloader for Linux</li>
+            <li class="lang-de">Kopiere <code>hytale-downloader-linux-amd64</code> nach:</li>
+            <li class="lang-en hidden">Copy <code>hytale-downloader-linux-amd64</code> to:</li>
+          </ol>
+          <code style="display: block; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+            ./data/downloader/hytale-downloader-linux-amd64
+          </code>
+        </div>
+
+        <div id="downloader-status" class="muted" style="margin-top: 12px;">
+          <span class="lang-de">Prüfe Downloader...</span>
+          <span class="lang-en hidden">Checking downloader...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Download Server -->
+    <div class="step" id="step2">
+      <div class="step-header">
+        <span class="step-number pending" id="step2-num">2</span>
+        <span class="step-title">
+          <span class="lang-de">Server herunterladen</span>
+          <span class="lang-en hidden">Download Server</span>
+        </span>
+      </div>
+      <div class="step-content">
+        <p class="lang-de">
+          Starte den Download und authentifiziere dich mit deinem Hytale-Account.
+        </p>
+        <p class="lang-en hidden">
+          Start the download and authenticate with your Hytale account.
+        </p>
+
+        <div class="warning-box" id="oauth-warning">
+          <strong class="lang-de">⚠️ Wichtig:</strong>
+          <strong class="lang-en hidden">⚠️ Important:</strong>
+          <span class="lang-de">
+            Nach dem Start erscheint ein OAuth-Link in der Log-Ausgabe unten.
+            Kopiere diesen Link und öffne ihn in deinem Browser, um dich anzumelden.
+          </span>
+          <span class="lang-en hidden">
+            After starting, an OAuth link will appear in the log output below.
+            Copy this link and open it in your browser to authenticate.
+          </span>
+        </div>
+
+        <div class="actions" style="margin-top: 12px;">
+          <button id="btn-download" class="btn-control" disabled>
+            <span class="lang-de">Download starten</span>
+            <span class="lang-en hidden">Start Download</span>
+          </button>
+          <button id="btn-refresh-log" class="btn-control">
+            <span class="lang-de">Log aktualisieren</span>
+            <span class="lang-en hidden">Refresh Log</span>
+          </button>
+        </div>
+
+        <div id="download-log" class="download-log hidden"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Complete -->
+    <div class="step hidden" id="step3">
+      <div class="step-header">
+        <span class="step-number done" id="step3-num">✓</span>
+        <span class="step-title">
+          <span class="lang-de">Installation abgeschlossen!</span>
+          <span class="lang-en hidden">Installation Complete!</span>
+        </span>
+      </div>
+      <div class="step-content">
+        <div class="success-box">
+          <p class="lang-de" style="font-size: 16px; margin-bottom: 12px;">
+            🎉 Dein Hytale Server ist bereit!
+          </p>
+          <p class="lang-en hidden" style="font-size: 16px; margin-bottom: 12px;">
+            🎉 Your Hytale Server is ready!
+          </p>
+          <a href="/" class="btn-control" style="display: inline-block; text-decoration: none;">
+            <span class="lang-de">Zum Dashboard</span>
+            <span class="lang-en hidden">Go to Dashboard</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    (function() {
+      let currentLang = 'de';
+      let downloadRunning = false;
+      let pollInterval = null;
+
+      // Language switching
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentLang = btn.dataset.lang;
+          updateLanguage();
+        });
+      });
+
+      function updateLanguage() {
+        document.querySelectorAll('.lang-de').forEach(el => {
+          el.classList.toggle('hidden', currentLang !== 'de');
+        });
+        document.querySelectorAll('.lang-en').forEach(el => {
+          el.classList.toggle('hidden', currentLang !== 'en');
+        });
+      }
+
+      // Check status
+      async function checkStatus() {
+        try {
+          const resp = await fetch('/api/setup/status');
+          const data = await resp.json();
+
+          // Update Step 1
+          const step1Num = document.getElementById('step1-num');
+          const downloaderStatus = document.getElementById('downloader-status');
+          const btnDownload = document.getElementById('btn-download');
+
+          if (data.downloader_exists) {
+            step1Num.classList.add('done');
+            step1Num.textContent = '✓';
+            downloaderStatus.innerHTML = '<span style="color: var(--green);">✓ Downloader gefunden / Downloader found</span>';
+            btnDownload.disabled = false;
+          } else {
+            step1Num.classList.remove('done');
+            step1Num.textContent = '1';
+            downloaderStatus.innerHTML = '<span style="color: var(--red);">✗ Downloader nicht gefunden / Downloader not found</span>';
+            btnDownload.disabled = true;
+          }
+
+          // Update Step 2
+          const step2Num = document.getElementById('step2-num');
+          if (data.server_installed) {
+            step2Num.classList.add('done');
+            step2Num.classList.remove('pending');
+            step2Num.textContent = '✓';
+            document.getElementById('step3').classList.remove('hidden');
+          }
+
+          // If credentials exist, download might work without OAuth
+          if (data.credentials_exist) {
+            document.getElementById('oauth-warning').classList.add('hidden');
+          }
+
+          return data;
+        } catch (e) {
+          console.error('Status check failed:', e);
+          return null;
+        }
+      }
+
+      // Start download
+      document.getElementById('btn-download').addEventListener('click', async () => {
+        if (downloadRunning) return;
+
+        downloadRunning = true;
+        document.getElementById('btn-download').disabled = true;
+        document.getElementById('btn-download').textContent = currentLang === 'de' ? 'Download läuft...' : 'Downloading...';
+        document.getElementById('download-log').classList.remove('hidden');
+        document.getElementById('download-log').textContent = currentLang === 'de' ? 'Starte Download...\n' : 'Starting download...\n';
+
+        try {
+          const resp = await fetch('/api/setup/download', { method: 'POST' });
+          const data = await resp.json();
+
+          if (data.error) {
+            document.getElementById('download-log').textContent += '\nERROR: ' + data.error;
+          }
+        } catch (e) {
+          document.getElementById('download-log').textContent += '\nERROR: ' + e.message;
+        }
+
+        // Start polling for log updates
+        pollInterval = setInterval(refreshLog, 2000);
+      });
+
+      // Refresh log
+      async function refreshLog() {
+        try {
+          const resp = await fetch('/api/setup/log');
+          const data = await resp.json();
+
+          const logEl = document.getElementById('download-log');
+          let logContent = data.log || '';
+
+          // Highlight OAuth links
+          logContent = logContent.replace(
+            /(https:\/\/[^\s]+auth[^\s]*)/gi,
+            '<a href="$1" target="_blank" class="oauth-link">$1</a>'
+          );
+
+          // Highlight errors
+          logContent = logContent.replace(
+            /ERROR:([^\n]*)/gi,
+            '<span class="error">ERROR:$1</span>'
+          );
+
+          // Highlight success
+          logContent = logContent.replace(
+            /(ERFOLGREICH|SUCCESSFUL|erfolgreich|successful)/gi,
+            '<span class="success">$1</span>'
+          );
+
+          logEl.innerHTML = logContent;
+          logEl.scrollTop = logEl.scrollHeight;
+
+          // Check if download completed
+          if (data.log && (data.log.includes('INSTALLATION ERFOLGREICH') || data.log.includes('INSTALLATION SUCCESSFUL'))) {
+            clearInterval(pollInterval);
+            downloadRunning = false;
+            await checkStatus();
+          }
+
+          // Check if download is still running
+          if (!data.running && downloadRunning) {
+            downloadRunning = false;
+            document.getElementById('btn-download').disabled = false;
+            document.getElementById('btn-download').innerHTML = currentLang === 'de'
+              ? '<span class="lang-de">Download starten</span><span class="lang-en hidden">Start Download</span>'
+              : '<span class="lang-de hidden">Download starten</span><span class="lang-en">Start Download</span>';
+            updateLanguage();
+          }
+        } catch (e) {
+          console.error('Log refresh failed:', e);
+        }
+      }
+
+      document.getElementById('btn-refresh-log').addEventListener('click', refreshLog);
+
+      // Initial check
+      checkStatus();
+      setInterval(checkStatus, 10000);
+    })();
+  </script>
+</body>
+</html>
