@@ -132,6 +132,31 @@ services:
 | `1.0.0`, `1.0`, `1` | Specific version |
 | `master` | Development build (may be unstable) |
 
+## Platform Support
+
+This image supports multiple architectures:
+- **linux/amd64** - Intel/AMD 64-bit processors
+- **linux/arm64** - ARM 64-bit (Apple Silicon, Raspberry Pi 4/5)
+
+Docker automatically selects the correct image for your platform.
+
+### Custom Builds
+
+Build with custom base image and Java version:
+
+```bash
+docker build \
+  --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
+  --build-arg DEBIAN_CODENAME=bookworm \
+  --build-arg JAVA_VERSION=21 \
+  -t hytale-custom .
+```
+
+Available build arguments:
+- `DEBIAN_BASE_IMAGE` - Base Debian image (default: `debian:bookworm-slim`)
+- `DEBIAN_CODENAME` - Debian codename for Java repo (default: `bookworm`)
+- `JAVA_VERSION` - Eclipse Temurin Java version (default: `21`)
+
 ## Links
 
 - **GitHub:** [zonfacter/hytale-docker](https://github.com/zonfacter/hytale-docker)
@@ -265,6 +290,31 @@ services:
 | `latest` | Aktuellste stabile Version |
 | `1.0.0`, `1.0`, `1` | Spezifische Version |
 | `master` | Entwicklungsversion (evtl. instabil) |
+
+## Plattform-Unterstützung
+
+Dieses Image unterstützt mehrere Architekturen:
+- **linux/amd64** - Intel/AMD 64-bit Prozessoren
+- **linux/arm64** - ARM 64-bit (Apple Silicon, Raspberry Pi 4/5)
+
+Docker wählt automatisch das richtige Image für deine Plattform.
+
+### Eigene Builds
+
+Build mit benutzerdefiniertem Base-Image und Java-Version:
+
+```bash
+docker build \
+  --build-arg DEBIAN_BASE_IMAGE=debian:bookworm-slim \
+  --build-arg DEBIAN_CODENAME=bookworm \
+  --build-arg JAVA_VERSION=21 \
+  -t hytale-custom .
+```
+
+Verfügbare Build-Argumente:
+- `DEBIAN_BASE_IMAGE` - Basis Debian-Image (Standard: `debian:bookworm-slim`)
+- `DEBIAN_CODENAME` - Debian Codename für Java-Repo (Standard: `bookworm`)
+- `JAVA_VERSION` - Eclipse Temurin Java-Version (Standard: `21`)
 
 ## Links
 

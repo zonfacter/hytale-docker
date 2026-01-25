@@ -16,6 +16,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Build arguments for customization (optional)
+      # Uncomment and modify to use different base images or Java versions
+      # args:
+      #   DEBIAN_BASE_IMAGE: debian:bookworm-slim
+      #   DEBIAN_CODENAME: bookworm
+      #   JAVA_VERSION: 21
 
     # Ports
     ports:

@@ -30,6 +30,32 @@ sudo usermod -aG docker $USER
 # After installation: Log out and back in
 ```
 
+### Supported Platforms
+
+This Docker image supports multiple architectures:
+- **linux/amd64** - Intel/AMD 64-bit processors (standard PCs/servers)
+- **linux/arm64** - ARM 64-bit (Apple Silicon Macs, Raspberry Pi 4/5)
+
+Docker automatically selects the correct version for your system.
+
+### Custom Builds (Optional)
+
+If you need a different Debian version or Java version:
+
+```bash
+# Example: Debian Bullseye with Java 17
+docker build \
+  --build-arg DEBIAN_BASE_IMAGE=debian:bullseye-slim \
+  --build-arg DEBIAN_CODENAME=bullseye \
+  --build-arg JAVA_VERSION=17 \
+  -t hytale-custom .
+```
+
+Available build arguments:
+- `DEBIAN_BASE_IMAGE` - Base image (default: `debian:bookworm-slim`)
+- `DEBIAN_CODENAME` - Debian codename (default: `bookworm`)
+- `JAVA_VERSION` - Java version (default: `21`)
+
 ---
 
 ## Quick Start
