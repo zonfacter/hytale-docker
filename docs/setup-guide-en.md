@@ -85,8 +85,15 @@ The Hytale server cannot be distributed directly - you have two options:
 1. Visit [hytale.com](https://hytale.com/)
 2. Download the **Server Downloader for Linux**
 3. The file is named: `hytale-downloader-linux-amd64`
-4. Copy it to the `./data/downloader/` folder:
+4. Copy it to the Docker volume or a local directory:
 
+**With named volumes (default):**
+```bash
+# Start temporary container to copy file
+docker run --rm -v hytale-downloader:/downloader -v $(pwd):/host ubuntu cp /host/hytale-downloader-linux-amd64 /downloader/
+```
+
+**With bind mounts (if configured):**
 ```bash
 # Create directory (if it doesn't exist)
 mkdir -p ./data/downloader
@@ -241,6 +248,60 @@ environment:
   - HYTALE_MEMORY_MAX=4G
 ```
 
+### Volume Configuration
+
+The default configuration uses **named volumes**, which is recommended because:
+- ✅ Independent of working directory
+- ✅ Better managed by Docker
+- ✅ Consistent across different operating systems
+
+**Used Volumes:**
+- `hytale-universe` - World data (players, builds)
+- `hytale-mods` - Installed mods
+- `hytale-backups` - Backup files
+- `hytale-downloader` - Downloader & OAuth credentials
+- `hytale-logs` - Server logs
+
+#### Alternative 1: Bind Mounts with Relative Paths
+
+If you need direct file system access (e.g., for manual backups):
+
+1. Edit `docker-compose.yml`
+2. Comment out the named volumes (lines 86-100)
+3. Uncomment the relative paths section (lines 106-112)
+
+⚠️ **Important:** You must always run `docker-compose` from the repository root directory!
+
+#### Alternative 2: Bind Mounts with Absolute Paths
+
+For production environments with specific storage requirements:
+
+1. Edit `docker-compose.yml`
+2. Comment out the named volumes (lines 86-100)
+3. Uncomment the absolute paths section (lines 116-122)
+4. Replace `/path/to/hytale-data` with your actual data directory
+
+This is the most reliable option for production.
+
+#### Volume Management
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect a volume (shows storage location)
+docker volume inspect hytale-universe
+
+# Backup a volume (example for universe)
+docker run --rm -v hytale-universe:/data -v $(pwd):/backup ubuntu tar czf /backup/universe-backup.tar.gz -C /data .
+
+# Restore a volume
+docker run --rm -v hytale-universe:/data -v $(pwd):/backup ubuntu tar xzf /backup/universe-backup.tar.gz -C /data
+
+# Remove all volumes (WARNING: deletes all data!)
+docker-compose down -v
+```
+
 ### All Environment Variables
 
 | Variable | Default | Description |
@@ -263,7 +324,17 @@ environment:
 
 **Problem:** Setup Wizard shows "Downloader not found"
 
-**Solution:**
+**Solution with named volumes (default):**
+1. Check if the file exists in the volume:
+   ```bash
+   docker run --rm -v hytale-downloader:/downloader ubuntu ls -la /downloader/
+   ```
+2. If not present, copy the file to the volume:
+   ```bash
+   docker run --rm -v hytale-downloader:/downloader -v $(pwd):/host ubuntu cp /host/hytale-downloader-linux-amd64 /downloader/
+   ```
+
+**Solution with bind mounts:**
 1. Make sure the file exists:
    ```bash
    ls -la ./data/downloader/
