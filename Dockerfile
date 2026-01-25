@@ -84,6 +84,11 @@ RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh ${HYTALE_DIR}/.downloader/dow
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html
 COPY --chown=hytale:hytale dashboard/setup_routes.py ${DASHBOARD_DIR}/setup_routes.py
+COPY --chown=root:root scripts/patch-dashboard-setup.sh /usr/local/bin/patch-dashboard-setup.sh
+
+# Integrate setup routes into dashboard app
+RUN chmod +x /usr/local/bin/patch-dashboard-setup.sh && \
+    /usr/local/bin/patch-dashboard-setup.sh
 
 # Expose ports
 # 5520/udp - Hytale Game Server
