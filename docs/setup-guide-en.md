@@ -323,6 +323,27 @@ environment:
 2. After installing mods: Restart the server
 3. Check server logs for errors
 
+### Console commands not working
+
+**Problem:** Commands sent via dashboard don't reach the server
+
+**Cause:** Named Pipe (FIFO) compatibility issues with storage drivers or orchestration
+
+**Diagnosis:**
+```bash
+# Check if pipe exists
+docker exec hytale-server ls -l /opt/hytale-server/.console_pipe
+
+# Should show: prw-rw---- (p = pipe)
+```
+
+**Solution:**
+- See **[IPC Mechanisms Documentation](ipc-mechanisms.md)** for:
+  - Storage driver compatibility
+  - Kubernetes-specific issues
+  - Alternative IPC methods (Unix Sockets, TCP)
+  - Windows Docker Desktop considerations
+
 ---
 
 ## Support

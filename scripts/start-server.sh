@@ -1,6 +1,12 @@
 #!/bin/bash
 #===============================================================================
 # Hytale Server Start Script (with FIFO console pipe)
+#
+# This script uses a Named Pipe (FIFO) for console input, allowing the
+# dashboard to send commands to the server. Named Pipes may have compatibility
+# issues in certain environments (storage drivers, Kubernetes, Windows).
+# For detailed documentation and alternative IPC mechanisms, see:
+# docs/ipc-mechanisms.md
 #===============================================================================
 
 cd /opt/hytale-server
@@ -22,6 +28,8 @@ if [ ! -f "$ASSETS" ]; then
 fi
 
 # Create FIFO pipe if not exists
+# Note: Named Pipes (FIFO) may have compatibility issues in some environments.
+# See docs/ipc-mechanisms.md for troubleshooting and alternatives.
 if [ ! -p "$PIPE" ]; then
     mkfifo "$PIPE"
     chmod 660 "$PIPE"

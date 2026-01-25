@@ -251,6 +251,7 @@ Install mods directly from CurseForge:
 
 - 🇩🇪 [Einrichtungsanleitung (Deutsch)](docs/setup-guide-de.md)
 - 🇬🇧 [Setup Guide (English)](docs/setup-guide-en.md)
+- 🔧 [IPC Mechanisms & FIFO Documentation](docs/ipc-mechanisms.md)
 - 📊 [Dashboard Repository](https://github.com/zonfacter/hytale-dashboard)
 
 ---
@@ -274,6 +275,16 @@ Install mods directly from CurseForge:
 ### Mods not loading
 - JAR files must be directly in `./data/mods/` (not in subfolders)
 - Restart server after installing mods
+
+### Console commands not working / FIFO issues
+- **Symptom**: Commands sent via dashboard don't reach the server
+- **Cause**: Named Pipe (FIFO) compatibility issues with storage drivers or orchestration
+- **Quick fix**: Check if pipe exists: `docker exec hytale-server ls -l /opt/hytale-server/.console_pipe`
+- **Detailed documentation**: See [IPC Mechanisms Guide](docs/ipc-mechanisms.md) for:
+  - Storage driver compatibility
+  - Kubernetes-specific issues
+  - Alternative IPC methods (Unix sockets, TCP)
+  - Windows Docker Desktop considerations
 
 ---
 
