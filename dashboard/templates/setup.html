@@ -256,16 +256,24 @@
           </span>
         </div>
 
-        <div class="actions" style="margin-top: 12px;">
-          <button id="btn-auth-login" class="btn-control">
-            <span class="lang-de">🔐 Server authentifizieren</span>
-            <span class="lang-en hidden">🔐 Authenticate Server</span>
+        <div class="actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-auth-browser" class="btn-control">
+            <span class="lang-de">🌐 Browser Login</span>
+            <span class="lang-en hidden">🌐 Browser Login</span>
+          </button>
+          <button id="btn-auth-device" class="btn-control" style="background: transparent; border: 1px solid var(--accent);">
+            <span class="lang-de">📱 Device Login</span>
+            <span class="lang-en hidden">📱 Device Login</span>
           </button>
           <button id="btn-refresh-auth-log" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
             <span class="lang-de">Log aktualisieren</span>
             <span class="lang-en hidden">Refresh Log</span>
           </button>
         </div>
+        <p class="muted" style="margin-top: 8px; font-size: 12px;">
+          <span class="lang-de"><strong>Browser:</strong> Öffnet OAuth-Link im Browser | <strong>Device:</strong> Zeigt Code für Hytale-Client</span>
+          <span class="lang-en hidden"><strong>Browser:</strong> Opens OAuth link in browser | <strong>Device:</strong> Shows code for Hytale client</span>
+        </p>
 
         <div id="auth-log" class="download-log" style="margin-top: 12px; display: none;"></div>
         <div id="auth-status" style="margin-top: 8px;"></div>
@@ -595,20 +603,21 @@
       setTimeout(() => { status.textContent = ''; }, 5000);
     });
 
-    // Server Authentication
-    document.getElementById('btn-auth-login').addEventListener('click', async () => {
+    // Server Authentication - shared function
+    async function sendAuthCommand(method) {
       const authLog = document.getElementById('auth-log');
       const authStatus = document.getElementById('auth-status');
+      const command = '/auth login ' + method;
 
       authLog.style.display = 'block';
-      authLog.innerHTML = '<span class="lang-de">Sende /auth login Befehl...</span><span class="lang-en hidden">Sending /auth login command...</span>';
+      authLog.innerHTML = '<span>Sende ' + command + ' ...</span>';
       authStatus.innerHTML = '';
 
       try {
         const resp = await fetch('/api/console/command', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: '/auth login' })
+          body: JSON.stringify({ command: command })
         });
         const data = await resp.json();
 
@@ -625,7 +634,10 @@
       } catch (e) {
         authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + e.message + '</span>';
       }
-    });
+    }
+
+    document.getElementById('btn-auth-browser').addEventListener('click', () => sendAuthCommand('browser'));
+    document.getElementById('btn-auth-device').addEventListener('click', () => sendAuthCommand('device'));
 
     // Refresh auth log
     async function refreshAuthLog() {

@@ -230,6 +230,42 @@ async def api_console_output(user: str = Depends(verify_credentials), since: str
     return JSONResponse({"lines": lines})'''
         content = content.replace(old_console, new_console)
 
+    # Patch console/send to use command file instead of FIFO pipe in Docker mode
+    old_console_send = '''@app.post("/api/console/send")
+async def api_console_send(request: Request, user: str = Depends(verify_credentials)):
+    if not ALLOW_CONTROL:
+        raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+
+    body = await request.json()
+    command = body.get("command", "").strip()
+    if not command:
+        raise HTTPException(status_code=400, detail="Kein Befehl angegeben.")
+
+    if not CONSOLE_PIPE.exists():'''
+    if old_console_send in content:
+        new_console_send = '''@app.post("/api/console/send")
+async def api_console_send(request: Request, user: str = Depends(verify_credentials)):
+    if not ALLOW_CONTROL:
+        raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+
+    body = await request.json()
+    command = body.get("command", "").strip()
+    if not command:
+        raise HTTPException(status_code=400, detail="Kein Befehl angegeben.")
+
+    # Docker mode: use command file instead of FIFO pipe
+    if DOCKER_MODE:
+        command_file = SERVER_DIR / ".server_command"
+        try:
+            with open(command_file, "a") as f:
+                f.write(command + "\\n")
+            return JSONResponse({"ok": True, "message": f"Befehl gesendet: {command}"})
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {e}")
+
+    if not CONSOLE_PIPE.exists():'''
+        content = content.replace(old_console_send, new_console_send)
+
     # Patch CF_API_KEY to use config file in Docker mode
     old_cf_key = 'CF_API_KEY = os.environ.get("CF_API_KEY", "")'
     if old_cf_key in content:
