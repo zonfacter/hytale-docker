@@ -226,10 +226,56 @@
       </div>
     </div>
 
-    <!-- Step 3: Complete -->
-    <div class="step hidden" id="step3">
+    <!-- Step 3: Server Authentication -->
+    <div class="step" id="step3">
       <div class="step-header">
-        <span class="step-number done" id="step3-num">✓</span>
+        <span class="step-number pending" id="step3-num">3</span>
+        <span class="step-title">
+          <span class="lang-de">Server Authentifizierung</span>
+          <span class="lang-en hidden">Server Authentication</span>
+        </span>
+      </div>
+      <div class="step-content">
+        <p class="lang-de">
+          Der Server muss mit deinem Hytale-Account verknüpft werden, damit Spieler joinen können.
+        </p>
+        <p class="lang-en hidden">
+          The server needs to be linked with your Hytale account so players can join.
+        </p>
+
+        <div class="warning-box" id="auth-warning">
+          <strong class="lang-de">⚠️ Wichtig:</strong>
+          <strong class="lang-en hidden">⚠️ Important:</strong>
+          <span class="lang-de">
+            Nach dem Klick auf "Server authentifizieren" erscheint ein OAuth-Link im Log unten.
+            Kopiere diesen Link und öffne ihn in deinem Browser.
+          </span>
+          <span class="lang-en hidden">
+            After clicking "Authenticate Server", an OAuth link will appear in the log below.
+            Copy this link and open it in your browser.
+          </span>
+        </div>
+
+        <div class="actions" style="margin-top: 12px;">
+          <button id="btn-auth-login" class="btn-control">
+            <span class="lang-de">🔐 Server authentifizieren</span>
+            <span class="lang-en hidden">🔐 Authenticate Server</span>
+          </button>
+          <button id="btn-refresh-auth-log" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+            <span class="lang-de">Log aktualisieren</span>
+            <span class="lang-en hidden">Refresh Log</span>
+          </button>
+        </div>
+
+        <div id="auth-log" class="download-log" style="margin-top: 12px; display: none;"></div>
+        <div id="auth-status" style="margin-top: 8px;"></div>
+      </div>
+    </div>
+
+    <!-- Step 4: Complete -->
+    <div class="step hidden" id="step4">
+      <div class="step-header">
+        <span class="step-number done" id="step4-num">✓</span>
         <span class="step-title">
           <span class="lang-de">Installation abgeschlossen!</span>
           <span class="lang-en hidden">Installation Complete!</span>
@@ -548,6 +594,69 @@
       }
       setTimeout(() => { status.textContent = ''; }, 5000);
     });
+
+    // Server Authentication
+    document.getElementById('btn-auth-login').addEventListener('click', async () => {
+      const authLog = document.getElementById('auth-log');
+      const authStatus = document.getElementById('auth-status');
+
+      authLog.style.display = 'block';
+      authLog.innerHTML = '<span class="lang-de">Sende /auth login Befehl...</span><span class="lang-en hidden">Sending /auth login command...</span>';
+      authStatus.innerHTML = '';
+
+      try {
+        const resp = await fetch('/api/console/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: '/auth login' })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+          authStatus.innerHTML = '<span style="color: var(--green);">✓ Befehl gesendet / Command sent</span>';
+          // Wait a moment then refresh the log
+          setTimeout(refreshAuthLog, 2000);
+          // Start polling for log updates
+          const pollInterval = setInterval(refreshAuthLog, 3000);
+          setTimeout(() => clearInterval(pollInterval), 60000); // Stop after 1 minute
+        } else {
+          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (data.error || 'Fehler') + '</span>';
+        }
+      } catch (e) {
+        authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + e.message + '</span>';
+      }
+    });
+
+    // Refresh auth log
+    async function refreshAuthLog() {
+      const authLog = document.getElementById('auth-log');
+      try {
+        const resp = await fetch('/api/logs');
+        const data = await resp.json();
+        if (data.lines && data.lines.length > 0) {
+          let logContent = data.lines.slice(-30).join('\n');
+
+          // Highlight OAuth links
+          logContent = logContent.replace(
+            /(https:\/\/[^\s]+)/gi,
+            '<a href="$1" target="_blank" class="oauth-link" style="color: var(--accent);">$1</a>'
+          );
+
+          // Highlight auth-related messages
+          logContent = logContent.replace(
+            /(auth|login|authenticate|token)/gi,
+            '<strong>$1</strong>'
+          );
+
+          authLog.innerHTML = logContent;
+          authLog.scrollTop = authLog.scrollHeight;
+        }
+      } catch (e) {
+        console.error('Failed to refresh auth log:', e);
+      }
+    }
+
+    document.getElementById('btn-refresh-auth-log').addEventListener('click', refreshAuthLog);
   </script>
 </body>
 </html>
