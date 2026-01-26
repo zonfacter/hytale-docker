@@ -20,6 +20,24 @@ mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 mkdir -p /var/log/supervisor
 
+# Setup persistent machine-id for Hytale auth credential encryption
+# The server derives the encryption key from /etc/machine-id
+# Store in .downloader volume so it persists across container recreations
+echo "[entrypoint] Setting up persistent machine-id..."
+PERSISTENT_MACHINE_ID="${HYTALE_DIR}/.downloader/.machine-id"
+if [ ! -f "$PERSISTENT_MACHINE_ID" ]; then
+    echo "[entrypoint] Generating new persistent machine-id..."
+    # Generate a valid machine-id format (32 hex characters)
+    cat /proc/sys/kernel/random/uuid | tr -d '-' | head -c 32 > "$PERSISTENT_MACHINE_ID"
+    echo "" >> "$PERSISTENT_MACHINE_ID"
+    chmod 444 "$PERSISTENT_MACHINE_ID"
+fi
+# Apply to system (needed for Hytale EncryptedAuthCredentialStore)
+cp "$PERSISTENT_MACHINE_ID" /etc/machine-id 2>/dev/null || true
+mkdir -p /var/lib/dbus 2>/dev/null || true
+cp "$PERSISTENT_MACHINE_ID" /var/lib/dbus/machine-id 2>/dev/null || true
+echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
+
 # Ensure scripts are executable (in case permissions were lost)
 echo "[entrypoint] Ensuring script permissions..."
 chmod +x ${HYTALE_DIR}/start.sh 2>/dev/null || true

@@ -16,6 +16,13 @@ if [ ! -f "Server/HytaleServer.jar" ] || [ ! -f "Assets.zip" ]; then
     exit 1
 fi
 
+# Verify machine-id is set (required for Hytale auth credential encryption)
+if [ -f /etc/machine-id ]; then
+    echo "[wrapper] Machine-id available for auth encryption"
+else
+    echo "[wrapper] WARNING: /etc/machine-id not found - credentials may not persist!"
+fi
+
 # Create command file for receiving commands
 touch "$COMMAND_FILE"
 chmod 666 "$COMMAND_FILE"
