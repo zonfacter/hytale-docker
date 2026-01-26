@@ -4,11 +4,21 @@ This file replaces systemd-dependent functions with supervisord equivalents.
 """
 
 import os
+import re
 import subprocess
 import json
 from pathlib import Path
 from datetime import datetime, timezone
 from threading import Lock
+
+
+# ANSI escape code pattern for stripping terminal colors
+ANSI_PATTERN = re.compile(r'\x1b\[[0-9;]*m|\[(?:[0-9;]*)?m')
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    return ANSI_PATTERN.sub('', text)
 
 # Configuration
 SERVICE_NAME = "hytale-server"  # supervisord program name
@@ -187,9 +197,9 @@ def get_logs() -> list[str]:
     """Fetch logs from the server log file."""
     log_file = LOG_DIR / "server.log"
     error_log_file = LOG_DIR / "server-error.log"
-    
+
     lines = []
-    
+
     # Try to read the error log first (if it has content)
     if error_log_file.exists():
         try:
@@ -197,24 +207,24 @@ def get_logs() -> list[str]:
                 error_lines = f.readlines()
                 if error_lines:
                     lines.append("=== Error Log ===")
-                    lines.extend([line.rstrip() for line in error_lines[-50:]])  # Last 50 error lines
+                    lines.extend([strip_ansi(line.rstrip()) for line in error_lines[-50:]])
                     lines.append("")
         except (PermissionError, OSError) as e:
             lines.append(f"[Error reading error log: {e}]")
-    
+
     # Then read the main server log
     if log_file.exists():
         try:
             with open(log_file, "r", encoding="utf-8", errors="replace") as f:
                 log_lines = f.readlines()
                 lines.append("=== Server Log ===")
-                lines.extend([line.rstrip() for line in log_lines[-LOG_LINES:]])
+                lines.extend([strip_ansi(line.rstrip()) for line in log_lines[-LOG_LINES:]])
         except (PermissionError, OSError) as e:
             lines.append(f"[Error reading server log: {e}]")
     else:
         lines.append(f"[Log file not found: {log_file}]")
         lines.append("[Server may not have been started yet]")
-    
+
     return lines
 
 
@@ -454,16 +464,16 @@ def get_players_from_logs() -> list[dict]:
     """
     Parse player events from log files instead of journalctl.
     """
-    import re
-
     log_file = LOG_DIR / "server.log"
     players = {}
 
+    # Regex patterns for player join/leave events
+    # Log format: [2026/01/26 19:00:36   INFO] Adding player 'Name' to world 'default' at location ... (uuid)
     join_re = re.compile(
-        r"(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}).*Adding player '([^']+)' to world '([^']+)' at location .+\(([a-f0-9-]+)\)"
+        r"\[?(\d{4}[/-]\d{2}[/-]\d{2}[T ]\d{2}:\d{2}:\d{2}).*Adding player '([^']+)' to world '([^']+)' at location .+\(([a-f0-9-]+)\)"
     )
     leave_re = re.compile(
-        r"(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}).*Removing player '([^']+?)(?:\s*\([^)]+\))?'.*\(([a-f0-9-]+)\)\s*$"
+        r"\[?(\d{4}[/-]\d{2}[/-]\d{2}[T ]\d{2}:\d{2}:\d{2}).*Removing player '([^']+?)(?:\s*\([^)]+\))?'.*\(([a-f0-9-]+)\)"
     )
 
     if not log_file.exists():
@@ -471,7 +481,10 @@ def get_players_from_logs() -> list[dict]:
 
     try:
         with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-            for line in f:
+            for raw_line in f:
+                # Strip ANSI codes before parsing
+                line = strip_ansi(raw_line)
+
                 m = join_re.search(line)
                 if m:
                     ts, name, world, uuid = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -481,6 +494,7 @@ def get_players_from_logs() -> list[dict]:
                         "last_logout": None, "world": world, "position": None,
                     }
                     continue
+
                 m = leave_re.search(line)
                 if m:
                     ts, name, uuid = m.group(1), m.group(2), m.group(3)
@@ -506,8 +520,8 @@ def get_console_output(since: str = "") -> list[str]:
     try:
         with open(log_file, "r", encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
-            # Return last 50 lines
-            lines = [line.rstrip() for line in all_lines[-50:]]
+            # Return last 50 lines, strip ANSI codes
+            lines = [strip_ansi(line.rstrip()) for line in all_lines[-50:]]
     except (PermissionError, OSError) as e:
         lines = [f"[Error reading log: {e}]"]
 
