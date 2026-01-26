@@ -142,6 +142,53 @@
       <button class="lang-btn" data-lang="en">English</button>
     </div>
 
+    <!-- Network Info (Port Mappings) -->
+    <div class="step" id="network-info" style="background: rgba(59,130,246,0.05); border-color: var(--accent);">
+      <div class="step-header">
+        <span class="step-number" style="background: var(--accent);">🌐</span>
+        <span class="step-title">
+          <span class="lang-de">Netzwerk-Information</span>
+          <span class="lang-en hidden">Network Information</span>
+        </span>
+      </div>
+      <div class="step-content">
+        <div id="port-mappings-loading" class="muted">
+          <span class="lang-de">Lade Port-Mappings...</span>
+          <span class="lang-en hidden">Loading port mappings...</span>
+        </div>
+        <div id="port-mappings" style="display: none;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--line);">
+                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
+                  <span class="lang-de">Dienst</span>
+                  <span class="lang-en hidden">Service</span>
+                </th>
+                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
+                  <span class="lang-de">Interner Port</span>
+                  <span class="lang-en hidden">Internal Port</span>
+                </th>
+                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
+                  <span class="lang-de">Externer Port</span>
+                  <span class="lang-en hidden">External Port</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="port-table-body">
+            </tbody>
+          </table>
+          <p class="muted" style="margin-top: 12px; font-size: 12px;">
+            <span class="lang-de">💡 Spieler verbinden sich über den <strong>externen Game Port (UDP)</strong>.</span>
+            <span class="lang-en hidden">💡 Players connect using the <strong>external Game Port (UDP)</strong>.</span>
+          </p>
+        </div>
+        <div id="port-mappings-error" style="display: none; color: var(--yellow);">
+          <span class="lang-de">⚠️ Port-Mappings nicht verfügbar. Docker Socket nicht gemountet?</span>
+          <span class="lang-en hidden">⚠️ Port mappings unavailable. Docker socket not mounted?</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Step 1: Downloader -->
     <div class="step" id="step1">
       <div class="step-header">
@@ -516,7 +563,89 @@
 
       // Load settings on page load
       loadSettings();
+
+      // Load port mappings
+      loadPortMappings();
     })();
+
+    // Load and display port mappings
+    async function loadPortMappings() {
+      const loadingEl = document.getElementById('port-mappings-loading');
+      const mappingsEl = document.getElementById('port-mappings');
+      const errorEl = document.getElementById('port-mappings-error');
+      const tableBody = document.getElementById('port-table-body');
+
+      try {
+        const resp = await fetch('/api/ports');
+        const data = await resp.json();
+
+        loadingEl.style.display = 'none';
+
+        if (data.available && data.mappings && data.mappings.length > 0) {
+          // Build port lookup
+          const portLookup = {};
+          data.mappings.forEach(m => {
+            portLookup[m.container] = m.host;
+          });
+
+          // Service definitions
+          const services = [
+            { name: { de: '🎮 Game Server', en: '🎮 Game Server' }, internal: '5520/udp', key: '5520/udp' },
+            { name: { de: '🌐 Dashboard', en: '🌐 Dashboard' }, internal: '8088/tcp', key: '8088/tcp' },
+            { name: { de: '🔌 Plugin API', en: '🔌 Plugin API' }, internal: '5523/tcp', key: '5523/tcp' }
+          ];
+
+          let html = '';
+          services.forEach(s => {
+            const external = portLookup[s.key] || '-';
+            const highlight = s.key === '5520/udp' ? 'color: var(--green); font-weight: 600;' : '';
+            html += `<tr style="border-bottom: 1px solid var(--line);">
+              <td style="padding: 8px 0;">
+                <span class="lang-de">${s.name.de}</span>
+                <span class="lang-en hidden">${s.name.en}</span>
+              </td>
+              <td style="padding: 8px 0; font-family: monospace;">${s.internal}</td>
+              <td style="padding: 8px 0; font-family: monospace; ${highlight}">${external}</td>
+            </tr>`;
+          });
+
+          tableBody.innerHTML = html;
+          mappingsEl.style.display = 'block';
+        } else if (data.internal_ports) {
+          // Docker socket not available, show internal ports only
+          const services = [
+            { name: { de: '🎮 Game Server', en: '🎮 Game Server' }, internal: data.internal_ports.game },
+            { name: { de: '🌐 Dashboard', en: '🌐 Dashboard' }, internal: data.internal_ports.dashboard },
+            { name: { de: '🔌 Plugin API', en: '🔌 Plugin API' }, internal: data.internal_ports.api }
+          ];
+
+          let html = '';
+          services.forEach(s => {
+            html += `<tr style="border-bottom: 1px solid var(--line);">
+              <td style="padding: 8px 0;">
+                <span class="lang-de">${s.name.de}</span>
+                <span class="lang-en hidden">${s.name.en}</span>
+              </td>
+              <td style="padding: 8px 0; font-family: monospace;">${s.internal}</td>
+              <td style="padding: 8px 0; font-family: monospace; color: var(--muted);">
+                <span class="lang-de">nicht verfügbar</span>
+                <span class="lang-en hidden">unavailable</span>
+              </td>
+            </tr>`;
+          });
+
+          tableBody.innerHTML = html;
+          mappingsEl.style.display = 'block';
+          errorEl.style.display = 'block';
+        } else {
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Failed to load port mappings:', e);
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'block';
+      }
+    }
 
     // Settings toggle
     function toggleSettings() {

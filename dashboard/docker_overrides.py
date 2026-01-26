@@ -433,30 +433,63 @@ def get_port_mappings() -> dict:
             if len(hostname) == 12 and all(c in '0123456789abcdef' for c in hostname.lower()):
                 container_id = hostname
 
-            # Method 2: Read from cgroup
+            # Method 2: Read from cgroup (cgroupv1 and cgroupv2)
             if not container_id:
                 try:
                     with open("/proc/self/cgroup", "r") as f:
                         for line in f:
+                            # cgroupv1: contains "docker" in path
                             if "docker" in line:
                                 parts = line.strip().split("/")
                                 if parts:
                                     container_id = parts[-1][:12]
                                     break
+                            # cgroupv2: format is "0::/docker/<container_id>"
+                            if line.startswith("0::"):
+                                parts = line.strip().split("/")
+                                for i, part in enumerate(parts):
+                                    if part == "docker" and i + 1 < len(parts):
+                                        cid = parts[i + 1]
+                                        if len(cid) >= 12 and all(c in '0123456789abcdef' for c in cid[:12].lower()):
+                                            container_id = cid[:12]
+                                            break
+                                if container_id:
+                                    break
                 except:
                     pass
 
-            # Method 3: Read from mountinfo
+            # Method 3: Read from cpuset (often works on cgroupv2)
+            if not container_id:
+                try:
+                    with open("/proc/1/cpuset", "r") as f:
+                        content = f.read().strip()
+                        if "/docker/" in content:
+                            parts = content.split("/docker/")
+                            if len(parts) > 1:
+                                cid = parts[-1].split("/")[0]
+                                if len(cid) >= 12:
+                                    container_id = cid[:12]
+                except:
+                    pass
+
+            # Method 4: Read from mountinfo
             if not container_id:
                 try:
                     with open("/proc/self/mountinfo", "r") as f:
                         for line in f:
                             if "/docker/containers/" in line:
                                 start = line.find("/docker/containers/") + 19
-                                container_id = line[start:start+12]
+                                end_part = line[start:start+64]  # Container IDs are 64 chars
+                                container_id = end_part.split("/")[0][:12]
                                 break
                 except:
                     pass
+
+            # Method 5: Use HOSTNAME environment variable (Docker sets this)
+            if not container_id:
+                hostname_env = os.environ.get("HOSTNAME", "")
+                if len(hostname_env) == 12 and all(c in '0123456789abcdef' for c in hostname_env.lower()):
+                    container_id = hostname_env
 
             if container_id:
                 # Query Docker API via socket
