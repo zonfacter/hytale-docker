@@ -87,6 +87,27 @@ Then open `http://localhost:8088/setup` in your browser.
 | 5523 | TCP | Nitrado WebServer API (plugins) |
 | 8088 | TCP | Web Dashboard |
 
+### Check Port Mappings (Bridge Mode)
+
+If you use bridge networking with dynamic ports (common on NAS systems), check your actual port mappings:
+
+```bash
+# Show port mappings
+docker port <container-name>
+
+# Detailed output
+docker inspect <container-name> --format '{{range $p, $conf := .NetworkSettings.Ports}}{{$p}} -> {{(index $conf 0).HostPort}}{{println}}{{end}}'
+```
+
+Example output:
+```
+5520/udp -> 58985    # Players connect to this port!
+5523/tcp -> 45681
+8088/tcp -> 46577    # Dashboard URL: http://<host>:46577
+```
+
+**Important:** Players must use the **external UDP port** (e.g., `58985`) to connect, not `5520`!
+
 ## Volumes
 
 | Path | Description |
@@ -252,6 +273,27 @@ Dann öffne `http://localhost:8088/setup` im Browser.
 | 5520 | UDP | Hytale Spielserver |
 | 5523 | TCP | Nitrado WebServer API (Plugins) |
 | 8088 | TCP | Web Dashboard |
+
+### Port-Mappings prüfen (Bridge-Modus)
+
+Bei Bridge-Netzwerk mit dynamischen Ports (z.B. auf NAS-Systemen) die tatsächlichen Ports prüfen:
+
+```bash
+# Port-Mappings anzeigen
+docker port <container-name>
+
+# Detaillierte Ausgabe
+docker inspect <container-name> --format '{{range $p, $conf := .NetworkSettings.Ports}}{{$p}} -> {{(index $conf 0).HostPort}}{{println}}{{end}}'
+```
+
+Beispiel-Ausgabe:
+```
+5520/udp -> 58985    # Spieler verbinden sich mit diesem Port!
+5523/tcp -> 45681
+8088/tcp -> 46577    # Dashboard URL: http://<host>:46577
+```
+
+**Wichtig:** Spieler müssen den **externen UDP-Port** (z.B. `58985`) verwenden, nicht `5520`!
 
 ## Volumes
 
