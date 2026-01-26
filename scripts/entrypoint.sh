@@ -38,6 +38,26 @@ mkdir -p /var/lib/dbus 2>/dev/null || true
 cp "$PERSISTENT_MACHINE_ID" /var/lib/dbus/machine-id 2>/dev/null || true
 echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
 
+# Setup Docker socket access for port mapping display
+# The dashboard needs to read the Docker socket to show port mappings
+DOCKER_SOCKET="/var/run/docker.sock"
+if [ -S "$DOCKER_SOCKET" ]; then
+    echo "[entrypoint] Docker socket detected, configuring access..."
+    # Get the group ID of the docker socket
+    DOCKER_GID=$(stat -c '%g' "$DOCKER_SOCKET")
+    # Create docker group with that GID if it doesn't exist
+    if ! getent group docker > /dev/null 2>&1; then
+        groupadd -g "$DOCKER_GID" docker 2>/dev/null || true
+    fi
+    # Add hytale user to docker group
+    usermod -aG docker hytale 2>/dev/null || true
+    # Also try to make socket readable (fallback if group doesn't work)
+    chmod 666 "$DOCKER_SOCKET" 2>/dev/null || true
+    echo "[entrypoint] Docker socket access configured (GID: $DOCKER_GID)"
+else
+    echo "[entrypoint] Docker socket not mounted (port mapping display disabled)"
+fi
+
 # Ensure scripts are executable (in case permissions were lost)
 echo "[entrypoint] Ensuring script permissions..."
 chmod +x ${HYTALE_DIR}/start.sh 2>/dev/null || true
