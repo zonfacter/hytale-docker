@@ -282,45 +282,164 @@ def run_backup() -> tuple[str, int]:
 def check_version() -> dict:
     """
     Check for updates in Docker.
-    Returns version info without using the update script.
+    Uses the hytale-downloader -print-version to get the latest available version.
     """
+    import subprocess
+
+    downloader_dir = SERVER_DIR / ".downloader"
+    downloader_bin = downloader_dir / "hytale-downloader-linux-amd64"
     version_file = SERVER_DIR / "last_version.txt"
-    latest_file = SERVER_DIR / ".latest_version"
 
     current = "unknown"
     latest = "unknown"
+    error = None
 
+    # Get current installed version from last_version.txt
     try:
         if version_file.exists():
             current = version_file.read_text().strip()
-    except (PermissionError, OSError):
-        pass
+    except (PermissionError, OSError) as e:
+        error = f"Could not read current version: {e}"
 
-    try:
-        if latest_file.exists():
-            latest = latest_file.read_text().strip()
-    except (PermissionError, OSError):
-        pass
+    # Get latest available version using downloader's -print-version
+    if downloader_bin.exists():
+        try:
+            result = subprocess.run(
+                [str(downloader_bin), "-print-version"],
+                cwd=str(downloader_dir),
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                latest = result.stdout.strip()
+                # Cache the latest version for quick access
+                try:
+                    latest_file = SERVER_DIR / ".latest_version"
+                    latest_file.write_text(latest)
+                except:
+                    pass
+            elif result.stderr:
+                error = f"Downloader error: {result.stderr.strip()}"
+        except subprocess.TimeoutExpired:
+            error = "Version check timed out"
+        except Exception as e:
+            error = f"Failed to run downloader: {e}"
+    else:
+        # Fallback: try to read cached latest version
+        try:
+            latest_file = SERVER_DIR / ".latest_version"
+            if latest_file.exists():
+                latest = latest_file.read_text().strip()
+        except:
+            pass
+        if latest == "unknown":
+            error = "Downloader not found for version check"
 
     return {
         "current_version": current,
         "latest_version": latest,
-        "update_available": current != latest and latest != "unknown",
+        "update_available": current != latest and current != "unknown" and latest != "unknown",
         "docker_mode": True,
-        "message": "Version check in Docker mode. Use 'docker pull' to update the image."
+        "error": error,
+        "message": "Im Docker wird das Update über das Dashboard 'Download starten' oder 'docker pull' durchgeführt."
     }
 
 
 def run_update() -> dict:
     """
     Run update in Docker.
-    In Docker, updates are done by pulling a new image, not by running update scripts.
+    Uses the hytale-downloader to download the latest server version.
     """
-    return {
-        "error": None,
-        "docker_mode": True,
-        "message": "Updates in Docker should be done by pulling a new image: docker pull zonfacter/hytale-docker:latest"
-    }
+    import subprocess
+
+    downloader_dir = SERVER_DIR / ".downloader"
+    downloader_bin = downloader_dir / "hytale-downloader-linux-amd64"
+    download_script = downloader_dir / "download.sh"
+
+    if not downloader_bin.exists():
+        return {
+            "error": "Downloader not found",
+            "docker_mode": True,
+            "message": "Der Hytale Downloader wurde nicht gefunden. Bitte erst auf der Setup-Seite installieren."
+        }
+
+    # Get latest version first
+    latest_version = "unknown"
+    try:
+        result = subprocess.run(
+            [str(downloader_bin), "-print-version"],
+            cwd=str(downloader_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode == 0:
+            latest_version = result.stdout.strip()
+    except:
+        pass
+
+    # Run the download script (same as setup page)
+    if download_script.exists():
+        try:
+            log_file = SERVER_DIR / "logs" / "update.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Run download in background and capture output
+            with open(log_file, "w") as f:
+                result = subprocess.run(
+                    ["/bin/bash", str(download_script)],
+                    cwd=str(downloader_dir),
+                    stdout=f,
+                    stderr=subprocess.STDOUT,
+                    timeout=600  # 10 minute timeout
+                )
+
+            if result.returncode == 0:
+                # Update the version file
+                try:
+                    version_file = SERVER_DIR / "last_version.txt"
+                    if latest_version != "unknown":
+                        version_file.write_text(latest_version)
+                except:
+                    pass
+
+                return {
+                    "error": None,
+                    "docker_mode": True,
+                    "version": latest_version,
+                    "message": f"Update auf Version {latest_version} erfolgreich! Server-Neustart empfohlen."
+                }
+            else:
+                log_content = ""
+                try:
+                    log_content = log_file.read_text()[-500:]  # Last 500 chars
+                except:
+                    pass
+                return {
+                    "error": f"Download failed with code {result.returncode}",
+                    "docker_mode": True,
+                    "log": log_content,
+                    "message": "Update fehlgeschlagen. Siehe Log für Details."
+                }
+        except subprocess.TimeoutExpired:
+            return {
+                "error": "Update timed out after 10 minutes",
+                "docker_mode": True,
+                "message": "Update-Timeout nach 10 Minuten."
+            }
+        except Exception as e:
+            return {
+                "error": str(e),
+                "docker_mode": True,
+                "message": f"Update-Fehler: {e}"
+            }
+    else:
+        return {
+            "error": "Download script not found",
+            "docker_mode": True,
+            "message": "Download-Script nicht gefunden. Setup-Seite prüfen."
+        }
 
 
 def check_auto_update() -> None:

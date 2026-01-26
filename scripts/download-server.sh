@@ -62,6 +62,14 @@ else
     log ""
 fi
 
+# Get latest version first
+log "Prüfe aktuelle Version / Checking current version..."
+LATEST_VERSION=$("$DOWNLOADER" -print-version 2>/dev/null || echo "unknown")
+if [ "$LATEST_VERSION" != "unknown" ]; then
+    log "Verfügbare Version / Available version: $LATEST_VERSION"
+fi
+log ""
+
 # Run downloader
 log "Starte Download / Starting download..."
 log ""
@@ -111,6 +119,12 @@ if [ -f "Server/HytaleServer.jar" ] && [ -f "Assets.zip" ]; then
     if [ -f "start.sh" ]; then
         chmod +x start.sh
         log "✓ start.sh ausführbar gemacht / start.sh made executable"
+    fi
+
+    # Save installed version
+    if [ "$LATEST_VERSION" != "unknown" ]; then
+        echo "$LATEST_VERSION" > "$EXTRACT_PATH/last_version.txt"
+        log "✓ Version gespeichert / Version saved: $LATEST_VERSION"
     fi
 
     # Signal to supervisord to enable server
