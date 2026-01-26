@@ -18,11 +18,16 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 - 🎮 **Hytale Dedicated Server** - Ready to run with Java 24
 - 🖥️ **Web Dashboard** - Manage your server via browser
 - 🔧 **Setup Wizard** - Guided installation with OAuth support
+- 💬 **Server Console** - Send commands directly from the dashboard
+- 🔐 **Server Authentication** - Easy Browser/Device login buttons
+- 🌐 **Port Mapping Display** - See external ports in bridge mode
+- 📊 **Version Detection** - Automatic update checking via downloader
 - ⬇️ **Automatic Downloader** - Server files downloaded automatically
 - 📦 **CurseForge Integration** - Install mods with one click
 - 💾 **Automatic Backups** - Built-in backup system
 - ⚙️ **Runtime Settings** - Configure API keys without container restart
 - 🚀 **AOTCache Support** - Faster server startup with Java 24
+- 🔑 **Persistent Auth** - Credentials survive container restarts
 
 ![Setup Wizard](docs/screenshots/setup-wizard.png)
 

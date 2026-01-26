@@ -14,9 +14,14 @@ A ready-to-use Docker image that includes:
 - **Hytale Dedicated Server** environment
 - **Web Dashboard** for easy server management
 - **Setup Wizard** with OAuth authentication support
+- **Server Console** - send commands directly from the dashboard
+- **Server Authentication** - easy Browser/Device login buttons
+- **Port Mapping Display** - see external ports in bridge mode
+- **Version Detection** - automatic update checking
 - **Automatic Downloader** - fetches server files from hytale.com
 - **CurseForge Integration** for one-click mod installation
 - **Automatic Backups** system
+- **Persistent Auth Credentials** - survives container restarts
 
 ## Quick Start
 
@@ -113,6 +118,8 @@ services:
       - ./data/mods:/opt/hytale-server/mods
       - ./data/backups:/opt/hytale-server/backups
       - ./data/downloader:/opt/hytale-server/.downloader
+      # Docker socket for port mapping display (optional)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     stop_signal: SIGINT
     stop_grace_period: 60s
@@ -123,6 +130,8 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
+| `1.6.0`, `1.6` | Console commands, auth buttons, port display, version detection, persistent auth |
+| `1.5.0`, `1.5` | Screen wrapper for server console |
 | `1.4.0`, `1.4` | Runtime settings (CF_API_KEY, DOWNLOADER_URL) |
 | `1.3.0`, `1.3` | Java 24 + Debian Trixie |
 | `1.2.0`, `1.2` | Full Docker dashboard compatibility |
@@ -171,9 +180,14 @@ Ein fertiges Docker-Image, das enthält:
 - **Hytale Dedicated Server** Umgebung
 - **Web Dashboard** zur einfachen Server-Verwaltung
 - **Setup-Wizard** mit OAuth-Authentifizierung
+- **Server-Konsole** - Befehle direkt aus dem Dashboard senden
+- **Server-Authentifizierung** - einfache Browser/Device Login-Buttons
+- **Port-Mapping Anzeige** - externe Ports im Bridge-Modus sehen
+- **Versions-Erkennung** - automatische Update-Prüfung
 - **Automatischer Downloader** - lädt Server-Dateien von hytale.com
 - **CurseForge Integration** für Ein-Klick Mod-Installation
 - **Automatische Backups**
+- **Persistente Auth-Credentials** - überlebt Container-Neustarts
 
 ## Schnellstart
 
@@ -270,6 +284,8 @@ services:
       - ./data/mods:/opt/hytale-server/mods
       - ./data/backups:/opt/hytale-server/backups
       - ./data/downloader:/opt/hytale-server/.downloader
+      # Docker Socket für Port-Mapping Anzeige (optional)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     stop_signal: SIGINT
     stop_grace_period: 60s
@@ -280,6 +296,8 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
+| `1.6.0`, `1.6` | Konsolen-Befehle, Auth-Buttons, Port-Anzeige, Versions-Erkennung, persistente Auth |
+| `1.5.0`, `1.5` | Screen-Wrapper für Server-Konsole |
 | `1.4.0`, `1.4` | Runtime Settings (CF_API_KEY, DOWNLOADER_URL) |
 | `1.3.0`, `1.3` | Java 24 + Debian Trixie |
 | `1.2.0`, `1.2` | Volle Docker Dashboard-Kompatibilität |
