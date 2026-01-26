@@ -393,3 +393,114 @@ def get_console_output(since: str = "") -> list[str]:
         lines = [f"[Error reading log: {e}]"]
 
     return lines
+
+
+def get_port_mappings() -> dict:
+    """
+    Get Docker port mappings for this container.
+    Tries to read from Docker socket if available.
+    """
+    import socket
+    import urllib.request
+
+    result = {
+        "available": False,
+        "mappings": [],
+        "internal_ports": {
+            "game": "5520/udp",
+            "api": "5523/tcp",
+            "dashboard": "8088/tcp"
+        },
+        "hostname": "",
+        "error": None
+    }
+
+    # Try to get hostname
+    try:
+        result["hostname"] = socket.gethostname()
+    except:
+        pass
+
+    # Try Docker socket
+    docker_socket = "/var/run/docker.sock"
+    if os.path.exists(docker_socket):
+        try:
+            # Get container ID from hostname or cgroup
+            container_id = None
+
+            # Method 1: hostname is often the container ID
+            hostname = socket.gethostname()
+            if len(hostname) == 12 and all(c in '0123456789abcdef' for c in hostname.lower()):
+                container_id = hostname
+
+            # Method 2: Read from cgroup
+            if not container_id:
+                try:
+                    with open("/proc/self/cgroup", "r") as f:
+                        for line in f:
+                            if "docker" in line:
+                                parts = line.strip().split("/")
+                                if parts:
+                                    container_id = parts[-1][:12]
+                                    break
+                except:
+                    pass
+
+            # Method 3: Read from mountinfo
+            if not container_id:
+                try:
+                    with open("/proc/self/mountinfo", "r") as f:
+                        for line in f:
+                            if "/docker/containers/" in line:
+                                start = line.find("/docker/containers/") + 19
+                                container_id = line[start:start+12]
+                                break
+                except:
+                    pass
+
+            if container_id:
+                # Query Docker API via socket
+                import http.client
+
+                class DockerSocketConnection(http.client.HTTPConnection):
+                    def __init__(self):
+                        super().__init__("localhost")
+
+                    def connect(self):
+                        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                        self.sock.connect(docker_socket)
+
+                conn = DockerSocketConnection()
+                conn.request("GET", f"/containers/{container_id}/json")
+                response = conn.getresponse()
+
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    ports = data.get("NetworkSettings", {}).get("Ports", {})
+
+                    mappings = []
+                    for container_port, host_bindings in ports.items():
+                        if host_bindings:
+                            for binding in host_bindings:
+                                host_port = binding.get("HostPort", "")
+                                host_ip = binding.get("HostIp", "0.0.0.0")
+                                if host_ip == "0.0.0.0":
+                                    host_ip = ""
+                                mappings.append({
+                                    "container": container_port,
+                                    "host": host_port,
+                                    "ip": host_ip
+                                })
+
+                    result["available"] = True
+                    result["mappings"] = mappings
+                    result["container_id"] = container_id
+
+                conn.close()
+
+        except Exception as e:
+            result["error"] = str(e)
+    else:
+        result["error"] = "Docker socket not available"
+
+    return result

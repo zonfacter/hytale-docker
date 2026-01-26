@@ -12,7 +12,7 @@ FROM ${DEBIAN_BASE_IMAGE}
 
 LABEL maintainer="zonfacter"
 LABEL description="Hytale Dedicated Server with Web Dashboard"
-LABEL version="1.4.0"
+LABEL version="1.5.0"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     supervisor \
     gosu \
+    screen \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Eclipse Temurin Java (Adoptium)
@@ -90,9 +91,10 @@ COPY --chown=hytale:hytale scripts/start-server.sh ${HYTALE_DIR}/start.sh
 # Scripts outside volumes (won't be overwritten by mounts)
 COPY --chown=root:root scripts/download-server.sh /usr/local/bin/hytale-download.sh
 COPY --chown=root:root scripts/fetch-downloader.sh /usr/local/bin/hytale-fetch-downloader.sh
+COPY --chown=root:root scripts/server-wrapper.sh /usr/local/bin/hytale-server-wrapper.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html

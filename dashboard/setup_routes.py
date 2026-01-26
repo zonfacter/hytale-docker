@@ -172,6 +172,44 @@ async def update_settings(request: Request):
         }, status_code=500)
 
 
+@router.post("/api/console/command")
+async def send_console_command(request: Request):
+    """Send a command to the server console."""
+    body = await request.json()
+    command = body.get("command", "").strip()
+
+    if not command:
+        return JSONResponse({"error": "No command provided"}, status_code=400)
+
+    command_file = HYTALE_DIR / ".server_command"
+
+    try:
+        # Write command to file (server-wrapper.sh reads this)
+        with open(command_file, "a") as f:
+            f.write(command + "\n")
+        return JSONResponse({"ok": True, "message": f"Command sent: {command}"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.get("/api/ports")
+async def get_port_mappings():
+    """Get Docker port mappings for this container."""
+    try:
+        from docker_overrides import get_port_mappings
+        return JSONResponse(get_port_mappings())
+    except ImportError:
+        return JSONResponse({
+            "available": False,
+            "error": "Not in Docker mode",
+            "internal_ports": {
+                "game": "5520/udp",
+                "api": "5523/tcp",
+                "dashboard": "8088/tcp"
+            }
+        })
+
+
 @router.get("/api/settings/cf-status")
 async def check_cf_status():
     """Check if CurseForge API key is valid."""

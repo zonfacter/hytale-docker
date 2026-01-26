@@ -101,6 +101,10 @@ services:
       # Logs (optional)
       - hytale-logs:/opt/hytale-server/logs
 
+      # Docker socket (optional, for port mapping display in dashboard)
+      # Uncomment if you want the dashboard to show external port mappings
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+
     # Alternative: Bind mounts with relative paths
     # Use this if you need direct host file system access (e.g., for backups or config editing)
     # IMPORTANT: Must run docker-compose from the repository root directory
