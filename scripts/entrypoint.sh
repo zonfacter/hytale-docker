@@ -19,6 +19,8 @@ mkdir -p ${HYTALE_DIR}/mods
 mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 mkdir -p /var/log/supervisor
+mkdir -p /var/lib/tailscale
+chmod 700 /var/lib/tailscale
 
 # Setup persistent machine-id for Hytale auth credential encryption
 # The server derives the encryption key from /etc/machine-id
@@ -56,6 +58,15 @@ if [ -S "$DOCKER_SOCKET" ]; then
     echo "[entrypoint] Docker socket access configured (GID: $DOCKER_GID)"
 else
     echo "[entrypoint] Docker socket not mounted (port mapping display disabled)"
+fi
+
+# Tailscale VPN Integration
+if [ "$TAILSCALE_ENABLED" = "true" ]; then
+    echo "[entrypoint] Tailscale is enabled"
+    echo "[entrypoint] Tailscale will be started by supervisord"
+    echo "[entrypoint] Note: NET_ADMIN capability and /dev/net/tun device are required"
+else
+    echo "[entrypoint] Tailscale disabled (set TAILSCALE_ENABLED=true to enable)"
 fi
 
 # Ensure scripts are executable (in case permissions were lost)

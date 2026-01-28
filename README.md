@@ -20,6 +20,7 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 - 🔧 **Setup Wizard** - Guided installation with OAuth support
 - 💬 **Server Console** - Send commands directly from the dashboard
 - 🔐 **Server Authentication** - Easy Browser/Device login buttons
+- 🔗 **Tailscale VPN** - Secure remote access without port-forwarding
 - 🌐 **Port Mapping Display** - See external ports in bridge mode
 - 📊 **Version Detection** - Automatic update checking via downloader
 - ⬇️ **Automatic Downloader** - Server files downloaded automatically
@@ -132,6 +133,42 @@ Open `http://localhost:8088/setup` and follow the wizard:
 5. 🎉 Done! Server starts automatically
 
 ![Setup Process](docs/screenshots/setup-oauth.png)
+
+---
+
+## Tailscale VPN (Optional)
+
+Enable secure remote access without port-forwarding using Tailscale:
+
+```yaml
+services:
+  hytale:
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TAILSCALE_ENABLED=true
+      - TAILSCALE_AUTHKEY=tskey-auth-xxxxx  # Get from tailscale.com/admin
+      - TAILSCALE_HOSTNAME=hytale-server
+    volumes:
+      - hytale-tailscale:/var/lib/tailscale
+```
+
+**Benefits:**
+- 🔒 No port forwarding needed
+- 🌍 Access from anywhere securely
+- 🔐 End-to-end encrypted connections
+- 👥 Easy multiplayer with friends
+
+**Setup:**
+1. Create a [Tailscale account](https://login.tailscale.com/start) (free)
+2. Generate an [auth key](https://login.tailscale.com/admin/settings/keys)
+3. Add the configuration above to docker-compose.yml
+4. Access your server via Tailscale IP: `http://100.x.x.x:8088`
+
+📖 **Full Documentation:** [docs/tailscale-integration.md](docs/tailscale-integration.md)
 
 ---
 

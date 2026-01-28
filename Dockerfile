@@ -32,6 +32,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DASH_PASS=changeme \
     ALLOW_CONTROL=true \
     CF_API_KEY="" \
+    # Tailscale VPN
+    TAILSCALE_ENABLED=false \
+    TAILSCALE_AUTHKEY="" \
+    TAILSCALE_HOSTNAME=hytale-server \
+    TAILSCALE_ADVERTISE_ROUTES="" \
     # Internal
     PUID=1000 \
     PGID=1000
@@ -54,6 +59,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     screen \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Tailscale
+RUN curl -fsSL https://tailscale.com/install.sh | sh
 
 # Install Eclipse Temurin Java (Adoptium)
 # Re-declare ARGs after FROM to make them available in this build stage
@@ -92,18 +100,25 @@ COPY --chown=hytale:hytale scripts/start-server.sh ${HYTALE_DIR}/start.sh
 COPY --chown=root:root scripts/download-server.sh /usr/local/bin/hytale-download.sh
 COPY --chown=root:root scripts/fetch-downloader.sh /usr/local/bin/hytale-fetch-downloader.sh
 COPY --chown=root:root scripts/server-wrapper.sh /usr/local/bin/hytale-server-wrapper.sh
+COPY --chown=root:root scripts/tailscale-connect.sh /usr/local/bin/tailscale-connect.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/tailscale-connect.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html
 COPY --chown=hytale:hytale dashboard/setup_routes.py ${DASHBOARD_DIR}/setup_routes.py
 COPY --chown=root:root scripts/patch-dashboard-setup.sh /usr/local/bin/patch-dashboard-setup.sh
 
-# Integrate setup routes into dashboard app
+# Tailscale VPN integration
+COPY --chown=hytale:hytale dashboard/tailscale_routes.py ${DASHBOARD_DIR}/tailscale_routes.py
+COPY --chown=root:root scripts/patch-dashboard-tailscale.sh /usr/local/bin/patch-dashboard-tailscale.sh
+
+# Integrate setup and Tailscale routes into dashboard app
 RUN chmod +x /usr/local/bin/patch-dashboard-setup.sh && \
-    /usr/local/bin/patch-dashboard-setup.sh
+    /usr/local/bin/patch-dashboard-setup.sh && \
+    chmod +x /usr/local/bin/patch-dashboard-tailscale.sh && \
+    /usr/local/bin/patch-dashboard-tailscale.sh
 
 # Apply Docker-specific patches to make dashboard work with supervisord
 COPY --chown=hytale:hytale dashboard/docker_overrides.py ${DASHBOARD_DIR}/docker_overrides.py
@@ -118,7 +133,7 @@ RUN python3 ${DASHBOARD_DIR}/apply_docker_patches.py ${DASHBOARD_DIR} && \
 EXPOSE 5520/udp 5523/tcp 8088/tcp
 
 # Volumes for persistent data
-VOLUME ["${HYTALE_DIR}/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/backups", "${HYTALE_DIR}/.downloader"]
+VOLUME ["${HYTALE_DIR}/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/backups", "${HYTALE_DIR}/.downloader", "/var/lib/tailscale"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
