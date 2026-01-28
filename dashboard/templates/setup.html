@@ -901,8 +901,9 @@
           const ipData = await ipResp.json();
           
           if (ipData.ip) {
+            const hytalePort = ipData.hytale_port || '5520';
             document.getElementById('tailscale-ip').textContent = ipData.ip;
-            document.getElementById('tailscale-connect-info').textContent = `${ipData.ip}:5520`;
+            document.getElementById('tailscale-connect-info').textContent = `${ipData.ip}:${hytalePort}`;
             ipDisplay.style.display = 'block';
           } else {
             ipDisplay.style.display = 'none';

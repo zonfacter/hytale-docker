@@ -20,6 +20,7 @@ mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 mkdir -p /var/log/supervisor
 mkdir -p /var/lib/tailscale
+chmod 700 /var/lib/tailscale
 
 # Setup persistent machine-id for Hytale auth credential encryption
 # The server derives the encryption key from /etc/machine-id
@@ -61,60 +62,9 @@ fi
 
 # Tailscale VPN Integration
 if [ "$TAILSCALE_ENABLED" = "true" ]; then
-    echo "[entrypoint] Starting Tailscale..."
-    
-    # Ensure Tailscale state directory exists and has correct permissions
-    mkdir -p /var/lib/tailscale
-    chmod 700 /var/lib/tailscale
-    
-    # Start tailscaled in background
-    echo "[entrypoint] Starting tailscaled daemon..."
-    tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
-    TAILSCALED_PID=$!
-    sleep 3
-    
-    # Check if tailscaled is running
-    if ! kill -0 $TAILSCALED_PID 2>/dev/null; then
-        echo "[entrypoint] ERROR: tailscaled failed to start"
-    else
-        echo "[entrypoint] tailscaled started (PID: $TAILSCALED_PID)"
-        
-        # Build tailscale up command
-        TAILSCALE_CMD="tailscale up --hostname=\"$TAILSCALE_HOSTNAME\""
-        
-        # Add authkey if provided
-        if [ -n "$TAILSCALE_AUTHKEY" ]; then
-            TAILSCALE_CMD="$TAILSCALE_CMD --authkey=\"$TAILSCALE_AUTHKEY\""
-        fi
-        
-        # Add advertise routes if provided
-        if [ -n "$TAILSCALE_ADVERTISE_ROUTES" ]; then
-            TAILSCALE_CMD="$TAILSCALE_CMD --advertise-routes=\"$TAILSCALE_ADVERTISE_ROUTES\""
-        fi
-        
-        # Execute tailscale up
-        echo "[entrypoint] Connecting to Tailscale network..."
-        eval $TAILSCALE_CMD || {
-            echo "[entrypoint] WARNING: Tailscale authentication may be required"
-            echo "[entrypoint] Please authenticate via the dashboard or run: docker exec <container> tailscale up"
-        }
-        
-        # Wait a moment for connection
-        sleep 2
-        
-        # Try to get Tailscale IP
-        TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "not connected")
-        if [ "$TAILSCALE_IP" != "not connected" ] && [ -n "$TAILSCALE_IP" ]; then
-            echo "╔════════════════════════════════════════════════════════════════╗"
-            echo "║  Tailscale Connected                                           ║"
-            echo "║  IP: $TAILSCALE_IP"
-            echo "║  Hostname: $TAILSCALE_HOSTNAME"
-            echo "║  Players can connect via: ${TAILSCALE_IP}:${HYTALE_PORT}"
-            echo "╚════════════════════════════════════════════════════════════════╝"
-        else
-            echo "[entrypoint] Tailscale not yet connected. Check status via: tailscale status"
-        fi
-    fi
+    echo "[entrypoint] Tailscale is enabled"
+    echo "[entrypoint] Tailscale will be started by supervisord"
+    echo "[entrypoint] Note: NET_ADMIN capability and /dev/net/tun device are required"
 else
     echo "[entrypoint] Tailscale disabled (set TAILSCALE_ENABLED=true to enable)"
 fi
