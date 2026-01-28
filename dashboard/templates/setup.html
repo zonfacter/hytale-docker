@@ -408,6 +408,70 @@
       </div>
     </div>
 
+    <!-- Tailscale VPN Section -->
+    <div class="step" id="tailscale-section" style="margin-top: 16px;">
+      <div class="step-header" style="cursor: pointer;" onclick="toggleTailscale()">
+        <span class="step-number" style="background: var(--muted);">🔗</span>
+        <span class="step-title">
+          <span class="lang-de">Tailscale VPN (Optional)</span>
+          <span class="lang-en hidden">Tailscale VPN (Optional)</span>
+        </span>
+        <span id="tailscale-toggle" style="margin-left: auto; font-size: 20px;">▼</span>
+      </div>
+      <div class="step-content" id="tailscale-content" style="display: none;">
+        <p class="muted" style="margin-bottom: 16px;">
+          <span class="lang-de">Tailscale ermöglicht sicheren Remote-Zugriff ohne Port-Forwarding.</span>
+          <span class="lang-en hidden">Tailscale enables secure remote access without port-forwarding.</span>
+        </p>
+
+        <div id="tailscale-status-display" style="margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span class="lang-de" style="font-weight: 500;">Status:</span>
+            <span class="lang-en hidden" style="font-weight: 500;">Status:</span>
+            <span id="tailscale-status-text" class="muted">
+              <span class="lang-de">Wird geladen...</span>
+              <span class="lang-en hidden">Loading...</span>
+            </span>
+          </div>
+          <div id="tailscale-ip-display" style="display: none; margin-top: 8px; padding: 12px; background: var(--card); border-left: 3px solid var(--green); border-radius: 6px;">
+            <div style="margin-bottom: 4px;">
+              <span class="lang-de" style="font-weight: 500;">Tailscale IP:</span>
+              <span class="lang-en hidden" style="font-weight: 500;">Tailscale IP:</span>
+              <code id="tailscale-ip" style="margin-left: 8px; color: var(--green);"></code>
+            </div>
+            <div style="margin-top: 8px;">
+              <span class="lang-de" style="font-weight: 500;">Spieler können joinen über:</span>
+              <span class="lang-en hidden" style="font-weight: 500;">Players can connect via:</span>
+              <code id="tailscale-connect-info" style="display: block; margin-top: 4px; color: var(--accent);"></code>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions" style="display: flex; gap: 8px; align-items: center;">
+          <button id="btn-refresh-tailscale" class="btn-control">
+            <span class="lang-de">Status aktualisieren</span>
+            <span class="lang-en hidden">Refresh Status</span>
+          </button>
+          <span id="tailscale-action-status" class="muted" style="margin-left: 8px;"></span>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <strong class="lang-de">ℹ️ Tailscale aktivieren:</strong>
+          <strong class="lang-en hidden">ℹ️ Enable Tailscale:</strong>
+          <p class="lang-de" style="margin: 8px 0 0 0;">
+            Setze <code>TAILSCALE_ENABLED=true</code> in den Environment Variables und starte den Container neu.<br>
+            Optional: <code>TAILSCALE_AUTHKEY=tskey-auth-xxxxx</code> für automatische Authentifizierung.<br>
+            Auth Keys können unter <a href="https://login.tailscale.com/admin/settings/keys" target="_blank">login.tailscale.com/admin/settings/keys</a> erstellt werden.
+          </p>
+          <p class="lang-en hidden" style="margin: 8px 0 0 0;">
+            Set <code>TAILSCALE_ENABLED=true</code> in the environment variables and restart the container.<br>
+            Optional: <code>TAILSCALE_AUTHKEY=tskey-auth-xxxxx</code> for automatic authentication.<br>
+            Auth keys can be created at <a href="https://login.tailscale.com/admin/settings/keys" target="_blank">login.tailscale.com/admin/settings/keys</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -798,6 +862,67 @@
     }
 
     document.getElementById('btn-refresh-auth-log').addEventListener('click', refreshAuthLog);
+
+    // Tailscale toggle
+    function toggleTailscale() {
+      const content = document.getElementById('tailscale-content');
+      const toggle = document.getElementById('tailscale-toggle');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.textContent = '▲';
+        loadTailscaleStatus();
+      } else {
+        content.style.display = 'none';
+        toggle.textContent = '▼';
+      }
+    }
+
+    // Load Tailscale status
+    async function loadTailscaleStatus() {
+      const statusText = document.getElementById('tailscale-status-text');
+      const ipDisplay = document.getElementById('tailscale-ip-display');
+      const actionStatus = document.getElementById('tailscale-action-status');
+      
+      try {
+        statusText.innerHTML = '<span class="lang-de">Wird geladen...</span><span class="lang-en hidden">Loading...</span>';
+        
+        const resp = await fetch('/api/tailscale/status');
+        const data = await resp.json();
+        
+        if (!data.enabled) {
+          statusText.innerHTML = '<span style="color: var(--muted);">⚫ <span class="lang-de">Nicht aktiviert</span><span class="lang-en hidden">Not enabled</span></span>';
+          ipDisplay.style.display = 'none';
+          actionStatus.textContent = '';
+        } else if (data.connected && data.backend_state === 'Running') {
+          statusText.innerHTML = '<span style="color: var(--green);">🟢 <span class="lang-de">Verbunden</span><span class="lang-en hidden">Connected</span></span>';
+          
+          // Try to get IP
+          const ipResp = await fetch('/api/tailscale/ip');
+          const ipData = await ipResp.json();
+          
+          if (ipData.ip) {
+            document.getElementById('tailscale-ip').textContent = ipData.ip;
+            document.getElementById('tailscale-connect-info').textContent = `${ipData.ip}:5520`;
+            ipDisplay.style.display = 'block';
+          } else {
+            ipDisplay.style.display = 'none';
+          }
+        } else {
+          statusText.innerHTML = '<span style="color: var(--yellow);">🟡 <span class="lang-de">Nicht verbunden</span><span class="lang-en hidden">Not connected</span></span>';
+          ipDisplay.style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Failed to load Tailscale status:', e);
+        statusText.innerHTML = '<span style="color: var(--red);">❌ <span class="lang-de">Fehler</span><span class="lang-en hidden">Error</span></span>';
+        ipDisplay.style.display = 'none';
+      }
+    }
+
+    // Refresh Tailscale status button
+    document.getElementById('btn-refresh-tailscale').addEventListener('click', loadTailscaleStatus);
+    
+    // Load Tailscale status on page load
+    loadTailscaleStatus();
   </script>
 </body>
 </html>

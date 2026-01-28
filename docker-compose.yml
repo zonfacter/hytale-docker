@@ -54,6 +54,17 @@ services:
       # Nitrado WebServer API (for plugins)
       - "5523:5523/tcp"
 
+    # Capabilities for Tailscale VPN
+    # Required when TAILSCALE_ENABLED=true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+
+    # Device for Tailscale VPN
+    # Required when TAILSCALE_ENABLED=true
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
     # Environment Variables
     environment:
       # Server Settings
@@ -75,6 +86,14 @@ services:
       # Get your free key at: https://console.curseforge.com/
       # TIP: Can also be configured later via Dashboard → Setup → Settings
       - CF_API_KEY=
+
+      # Tailscale VPN Settings (Optional)
+      # Enable Tailscale for secure remote access without port-forwarding
+      # Get auth key at: https://login.tailscale.com/admin/settings/keys
+      - TAILSCALE_ENABLED=false
+      - TAILSCALE_AUTHKEY=           # Optional: tskey-auth-xxxxx
+      - TAILSCALE_HOSTNAME=hytale-server
+      - TAILSCALE_ADVERTISE_ROUTES=  # Optional: subnet routing (e.g., 10.0.0.0/24)
 
       # User/Group IDs (for file permissions)
       - PUID=1000
@@ -100,6 +119,9 @@ services:
 
       # Logs (optional)
       - hytale-logs:/opt/hytale-server/logs
+
+      # Tailscale state (for VPN persistence)
+      - hytale-tailscale:/var/lib/tailscale
 
       # Docker socket (read-only, for port mapping display in dashboard)
       # This allows the dashboard to show external port mappings in bridge mode
@@ -155,4 +177,6 @@ volumes:
   hytale-downloader:
     driver: local
   hytale-logs:
+    driver: local
+  hytale-tailscale:
     driver: local
