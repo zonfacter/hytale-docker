@@ -762,15 +762,14 @@ def get_mods() -> list[dict]:
     
     try:
         for item in sorted(MODS_DIR.iterdir()):
-            # Handle JAR files in root (plugins)
-            if item.is_file() and item.name.endswith(".jar"):
-                enabled = not item.name.endswith(".jar.disabled")
-                display_name = item.name.removesuffix(".jar.disabled").removesuffix(".jar")
+            # Handle enabled JAR files (ending in .jar but not .jar.disabled)
+            if item.is_file() and item.name.endswith(".jar") and not item.name.endswith(".jar.disabled"):
+                display_name = item.name.removesuffix(".jar")
                 size = item.stat().st_size
                 mods.append({
                     "name": display_name,
                     "dir_name": item.name,
-                    "enabled": enabled,
+                    "enabled": True,
                     "is_jar": True,
                     "has_manifest": False,
                     "manifest": None,
@@ -830,15 +829,24 @@ def check_plugin_installed(jar_pattern: str) -> dict:
     
     Args:
         jar_pattern: Pattern like "nitrado-webserver" or "nitrado-query"
+                    Must contain only alphanumeric characters, hyphens, and underscores.
     
     Returns:
         dict with installed, enabled status and file path if found
     """
+    import re
+    
+    # Validate input: only allow alphanumeric, hyphens, underscores
+    if not jar_pattern or not re.match(r'^[a-zA-Z0-9_-]+$', jar_pattern):
+        return {"installed": False, "enabled": False, "path": None, "error": "Invalid pattern"}
+    
     if not MODS_DIR.exists():
         return {"installed": False, "enabled": False, "path": None}
     
-    # Check for JAR files matching pattern
+    # Normalize pattern for matching
     pattern_lower = jar_pattern.lower()
+    # Create normalized version for directory matching (underscores -> hyphens)
+    pattern_normalized = pattern_lower.replace("_", "-")
     
     try:
         for item in MODS_DIR.iterdir():
@@ -846,20 +854,28 @@ def check_plugin_installed(jar_pattern: str) -> dict:
             
             # Check JAR files in root
             if item.is_file():
-                if pattern_lower in name_lower and name_lower.endswith((".jar", ".jar.disabled")):
-                    enabled = not name_lower.endswith(".disabled")
-                    return {
-                        "installed": True,
-                        "enabled": enabled,
-                        "path": str(item),
-                        "filename": item.name,
-                    }
+                if name_lower.endswith((".jar", ".jar.disabled")):
+                    # Extract base name without .jar or .jar.disabled
+                    base_name = name_lower.removesuffix(".disabled").removesuffix(".jar")
+                    # Check if pattern matches the beginning of the jar name
+                    # e.g., "nitrado-webserver" matches "nitrado-webserver-1.0.0.jar"
+                    if base_name.startswith(pattern_lower) or base_name == pattern_lower:
+                        enabled = not name_lower.endswith(".disabled")
+                        return {
+                            "installed": True,
+                            "enabled": enabled,
+                            "path": str(item),
+                            "filename": item.name,
+                        }
             
             # Check directories (old-style plugin installation)
             elif item.is_dir():
-                dir_name_lower = item.name.lower().replace("_", "-").replace(" ", "-")
-                # Convert "Nitrado_WebServer" to "nitrado-webserver" for matching
-                if pattern_lower.replace("-", "") in dir_name_lower.replace("-", ""):
+                # Normalize directory name (e.g., "Nitrado_WebServer" -> "nitrado-webserver")
+                dir_normalized = name_lower.replace("_", "-").replace(" ", "-")
+                dir_base = dir_normalized.removesuffix(".disabled")
+                
+                # Exact match or pattern matches the base name
+                if dir_base == pattern_normalized:
                     enabled = not item.name.endswith(".disabled")
                     return {
                         "installed": True,
@@ -891,17 +907,38 @@ DASHBOARD_VERSION = os.environ.get("DASHBOARD_VERSION", "1.7.0")
 GITHUB_REPO = "zonfacter/hytale-docker"
 DOCKERHUB_REPO = "zonfacter/hytale-docker"
 
+# Cache for update check results (to avoid rate limiting)
+_update_cache = None
+_update_cache_time = None
+UPDATE_CACHE_TTL = 3600  # 1 hour cache TTL
 
-def check_dashboard_update() -> dict:
+
+def check_dashboard_update(force_refresh: bool = False) -> dict:
     """
     Check for available updates from GitHub releases and Docker Hub.
+    
+    Results are cached for 1 hour to avoid API rate limiting.
+    
+    Args:
+        force_refresh: If True, bypass cache and fetch fresh data.
     
     Returns dict with:
     - current_version: Current installed version
     - github_release: Latest GitHub release info (if available)
     - dockerhub: Docker Hub image info (if available)
     - update_available: True if newer version exists
+    - cached: True if result was from cache
     """
+    global _update_cache, _update_cache_time
+    
+    # Check cache first (unless force refresh)
+    if not force_refresh and _update_cache is not None and _update_cache_time is not None:
+        cache_age = (datetime.now(timezone.utc) - _update_cache_time).total_seconds()
+        if cache_age < UPDATE_CACHE_TTL:
+            result = _update_cache.copy()
+            result["cached"] = True
+            result["cache_age_seconds"] = int(cache_age)
+            return result
     import urllib.request
     import urllib.error
     
@@ -911,6 +948,7 @@ def check_dashboard_update() -> dict:
         "dockerhub": None,
         "update_available": False,
         "error": None,
+        "cached": False,
     }
     
     # Check GitHub releases
@@ -964,6 +1002,10 @@ def check_dashboard_update() -> dict:
         pass
     except Exception:
         pass
+    
+    # Update cache
+    _update_cache = result.copy()
+    _update_cache_time = datetime.now(timezone.utc)
     
     return result
 
