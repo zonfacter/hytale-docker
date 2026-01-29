@@ -30,6 +30,9 @@ try:
         check_auto_update as docker_check_auto_update,
         get_players_from_logs as docker_get_players,
         get_console_output as docker_get_console_output,
+        get_mods as docker_get_mods,
+        check_plugin_installed as docker_check_plugin,
+        check_dashboard_update as docker_check_dashboard_update,
     )
     DOCKER_MODE = True
     print("[Dashboard] Running in Docker mode with supervisord")

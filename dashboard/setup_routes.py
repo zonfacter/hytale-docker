@@ -4,6 +4,7 @@ These routes are added to the main app.py when running in Docker.
 """
 
 import os
+import re
 import subprocess
 import asyncio
 from pathlib import Path
@@ -19,6 +20,15 @@ CREDENTIALS_FILE = DOWNLOADER_DIR / ".hytale-downloader-credentials.json"
 DOWNLOAD_LOG = HYTALE_DIR / "logs" / "download.log"
 SERVER_JAR = HYTALE_DIR / "Server" / "HytaleServer.jar"
 ASSETS_ZIP = HYTALE_DIR / "Assets.zip"
+
+# ANSI escape code pattern for stripping terminal colors
+ANSI_PATTERN = re.compile(r'\x1b\[[0-9;]*m|\[(?:[0-9;]*)?m')
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    return ANSI_PATTERN.sub('', text)
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -97,7 +107,9 @@ async def get_download_log():
     log_content = ""
     if DOWNLOAD_LOG.exists():
         try:
-            log_content = DOWNLOAD_LOG.read_text()
+            raw_content = DOWNLOAD_LOG.read_text()
+            # Strip ANSI escape codes for clean display
+            log_content = strip_ansi(raw_content)
         except Exception:
             pass
 
@@ -242,6 +254,42 @@ async def check_cf_status():
         })
 
     return JSONResponse({"valid": False, "message": "Unbekannter Fehler / Unknown error"})
+
+
+@router.get("/api/dashboard/version")
+async def get_dashboard_version():
+    """Get current dashboard version and check for updates."""
+    try:
+        from docker_overrides import check_dashboard_update
+        return JSONResponse(check_dashboard_update())
+    except ImportError:
+        return JSONResponse({
+            "error": "Version check nur im Docker-Modus verfügbar / Version check only available in Docker mode"
+        }, status_code=400)
+
+
+@router.get("/api/mods/list")
+async def get_mods_list():
+    """Get list of installed mods with metadata."""
+    try:
+        from docker_overrides import get_mods
+        return JSONResponse({"mods": get_mods()})
+    except ImportError:
+        return JSONResponse({
+            "error": "Mod-Liste nur im Docker-Modus verfügbar / Mod list only available in Docker mode"
+        }, status_code=400)
+
+
+@router.get("/api/plugins/check/{plugin_id}")
+async def check_plugin_status(plugin_id: str):
+    """Check if a specific plugin is installed."""
+    try:
+        from docker_overrides import check_plugin_installed
+        return JSONResponse(check_plugin_installed(plugin_id))
+    except ImportError:
+        return JSONResponse({
+            "error": "Plugin-Status nur im Docker-Modus verfügbar / Plugin status only available in Docker mode"
+        }, status_code=400)
 
 
 # Auto-redirect to setup if server not installed

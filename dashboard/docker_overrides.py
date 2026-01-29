@@ -463,17 +463,34 @@ def check_auto_update() -> None:
 def get_players_from_logs() -> list[dict]:
     """
     Parse player events from log files instead of journalctl.
+    
+    Supports multiple log formats:
+    - Simple: [INFO] Adding player 'Name' (uuid)
+    - Detailed: [2026/01/26 19:00:36   INFO] Adding player 'Name' to world 'default' at location ... (uuid)
+    - ISO format: 2026-01-26T19:00:36 INFO Adding player 'Name' (uuid)
     """
     log_file = LOG_DIR / "server.log"
     players = {}
 
-    # Regex patterns for player join/leave events
-    # Log format: [2026/01/26 19:00:36   INFO] Adding player 'Name' to world 'default' at location ... (uuid)
-    join_re = re.compile(
-        r"\[?(\d{4}[/-]\d{2}[/-]\d{2}[T ]\d{2}:\d{2}:\d{2}).*Adding player '([^']+)' to world '([^']+)' at location .+\(([a-f0-9-]+)\)"
+    # Timestamp extraction pattern - matches various date/time formats
+    # Examples: 2026/01/26 19:00:36, 2026-01-26T19:00:36, etc.
+    timestamp_re = re.compile(r"(\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2})")
+    
+    # Player event patterns (without embedded timestamp - we extract it separately)
+    # Format 1: Adding player 'Name' to world 'default' at location ... (uuid)
+    join_detailed_re = re.compile(
+        r"Adding player '([^']+)' to world '([^']+)' at location .+\(([a-f0-9-]+)\)",
+        re.IGNORECASE
     )
+    # Format 2: Adding player 'Name' (uuid)
+    join_simple_re = re.compile(
+        r"Adding player '([^']+)'\s*\(([a-f0-9-]+)\)",
+        re.IGNORECASE
+    )
+    # Leave format: Removing player 'Name' (uuid)
     leave_re = re.compile(
-        r"\[?(\d{4}[/-]\d{2}[/-]\d{2}[T ]\d{2}:\d{2}:\d{2}).*Removing player '([^']+?)(?:\s*\([^)]+\))?'.*\(([a-f0-9-]+)\)"
+        r"Removing player '([^']+?)(?:\s*\([^)]+\))?'\s*\(([a-f0-9-]+)\)",
+        re.IGNORECASE
     )
 
     if not log_file.exists():
@@ -484,23 +501,59 @@ def get_players_from_logs() -> list[dict]:
             for raw_line in f:
                 # Strip ANSI codes before parsing
                 line = strip_ansi(raw_line)
+                
+                # Extract timestamp if present (works for all formats)
+                ts_match = timestamp_re.search(line)
+                ts = ts_match.group(1) if ts_match else ""
 
-                m = join_re.search(line)
+                # Try detailed join pattern first (more specific)
+                m = join_detailed_re.search(line)
                 if m:
-                    ts, name, world, uuid = m.group(1), m.group(2), m.group(3), m.group(4)
+                    name, world, uuid = m.groups()
                     players[uuid] = {
-                        "name": name, "uuid": uuid,
-                        "online": True, "last_login": ts,
-                        "last_logout": None, "world": world, "position": None,
+                        "name": name,
+                        "uuid": uuid,
+                        "online": True,
+                        "last_login": ts,
+                        "last_logout": None,
+                        "world": world,
+                        "position": None,
                     }
                     continue
 
+                # Try simple join pattern
+                m = join_simple_re.search(line)
+                if m:
+                    name, uuid = m.groups()
+                    players[uuid] = {
+                        "name": name,
+                        "uuid": uuid,
+                        "online": True,
+                        "last_login": ts,
+                        "last_logout": None,
+                        "world": "default",
+                        "position": None,
+                    }
+                    continue
+
+                # Try leave pattern
                 m = leave_re.search(line)
                 if m:
-                    ts, name, uuid = m.group(1), m.group(2), m.group(3)
+                    name, uuid = m.groups()
                     if uuid in players:
                         players[uuid]["online"] = False
                         players[uuid]["last_logout"] = ts
+                    else:
+                        # Player joined before log window, add as offline
+                        players[uuid] = {
+                            "name": name,
+                            "uuid": uuid,
+                            "online": False,
+                            "last_login": None,
+                            "last_logout": ts,
+                            "world": None,
+                            "position": None,
+                        }
     except (PermissionError, OSError):
         pass
 
@@ -670,3 +723,282 @@ def get_port_mappings() -> dict:
         result["error"] = "Docker socket not available"
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Mod and Plugin Management
+# ---------------------------------------------------------------------------
+
+MODS_DIR = SERVER_DIR / "mods"
+
+
+def get_mod_manifest(mod_path: Path) -> dict | None:
+    """
+    Read manifest information from a mod directory.
+    Looks for manifest.json, plugin.json, or mod.json.
+    """
+    manifest_files = ["manifest.json", "plugin.json", "mod.json"]
+    
+    for manifest_name in manifest_files:
+        manifest_path = mod_path / manifest_name
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, PermissionError, OSError):
+                pass
+    return None
+
+
+def get_mods() -> list[dict]:
+    """
+    Get list of installed mods with metadata.
+    Reads from /opt/hytale-server/mods/ directory.
+    """
+    mods = []
+    
+    if not MODS_DIR.exists():
+        return mods
+    
+    try:
+        for item in sorted(MODS_DIR.iterdir()):
+            # Handle JAR files in root (plugins)
+            if item.is_file() and item.name.endswith(".jar"):
+                enabled = not item.name.endswith(".jar.disabled")
+                display_name = item.name.removesuffix(".jar.disabled").removesuffix(".jar")
+                size = item.stat().st_size
+                mods.append({
+                    "name": display_name,
+                    "dir_name": item.name,
+                    "enabled": enabled,
+                    "is_jar": True,
+                    "has_manifest": False,
+                    "manifest": None,
+                    "size": _human_size(size),
+                    "size_bytes": size,
+                })
+            # Handle disabled JAR files
+            elif item.is_file() and item.name.endswith(".jar.disabled"):
+                display_name = item.name.removesuffix(".jar.disabled")
+                size = item.stat().st_size
+                mods.append({
+                    "name": display_name,
+                    "dir_name": item.name,
+                    "enabled": False,
+                    "is_jar": True,
+                    "has_manifest": False,
+                    "manifest": None,
+                    "size": _human_size(size),
+                    "size_bytes": size,
+                })
+            # Handle directories (mods with multiple files)
+            elif item.is_dir():
+                enabled = not item.name.endswith(".disabled")
+                display_name = item.name.removesuffix(".disabled")
+                manifest = get_mod_manifest(item)
+                
+                # Calculate total size
+                total_size = sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
+                
+                mod_info = {
+                    "name": manifest.get("name", display_name) if manifest else display_name,
+                    "dir_name": item.name,
+                    "enabled": enabled,
+                    "is_jar": False,
+                    "has_manifest": manifest is not None,
+                    "manifest": manifest,
+                    "size": _human_size(total_size),
+                    "size_bytes": total_size,
+                }
+                
+                # Add manifest metadata if available
+                if manifest:
+                    mod_info["version"] = manifest.get("version", "")
+                    mod_info["author"] = manifest.get("author", manifest.get("authors", ""))
+                    mod_info["description"] = manifest.get("description", "")
+                
+                mods.append(mod_info)
+    except (PermissionError, OSError):
+        pass
+    
+    return mods
+
+
+def check_plugin_installed(jar_pattern: str) -> dict:
+    """
+    Check if a plugin is installed by looking for JAR files matching pattern.
+    
+    Args:
+        jar_pattern: Pattern like "nitrado-webserver" or "nitrado-query"
+    
+    Returns:
+        dict with installed, enabled status and file path if found
+    """
+    if not MODS_DIR.exists():
+        return {"installed": False, "enabled": False, "path": None}
+    
+    # Check for JAR files matching pattern
+    pattern_lower = jar_pattern.lower()
+    
+    try:
+        for item in MODS_DIR.iterdir():
+            name_lower = item.name.lower()
+            
+            # Check JAR files in root
+            if item.is_file():
+                if pattern_lower in name_lower and name_lower.endswith((".jar", ".jar.disabled")):
+                    enabled = not name_lower.endswith(".disabled")
+                    return {
+                        "installed": True,
+                        "enabled": enabled,
+                        "path": str(item),
+                        "filename": item.name,
+                    }
+            
+            # Check directories (old-style plugin installation)
+            elif item.is_dir():
+                dir_name_lower = item.name.lower().replace("_", "-").replace(" ", "-")
+                # Convert "Nitrado_WebServer" to "nitrado-webserver" for matching
+                if pattern_lower.replace("-", "") in dir_name_lower.replace("-", ""):
+                    enabled = not item.name.endswith(".disabled")
+                    return {
+                        "installed": True,
+                        "enabled": enabled,
+                        "path": str(item),
+                        "is_directory": True,
+                    }
+    except (PermissionError, OSError):
+        pass
+    
+    return {"installed": False, "enabled": False, "path": None}
+
+
+def _human_size(size_bytes: int) -> str:
+    """Convert bytes to human-readable size string."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size_bytes < 1024:
+            return f"{size_bytes:.1f} {unit}" if unit != "B" else f"{size_bytes} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} TB"
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Update Check
+# ---------------------------------------------------------------------------
+
+# Version of the Docker image - should match Dockerfile LABEL
+DASHBOARD_VERSION = os.environ.get("DASHBOARD_VERSION", "1.7.0")
+GITHUB_REPO = "zonfacter/hytale-docker"
+DOCKERHUB_REPO = "zonfacter/hytale-docker"
+
+
+def check_dashboard_update() -> dict:
+    """
+    Check for available updates from GitHub releases and Docker Hub.
+    
+    Returns dict with:
+    - current_version: Current installed version
+    - github_release: Latest GitHub release info (if available)
+    - dockerhub: Docker Hub image info (if available)
+    - update_available: True if newer version exists
+    """
+    import urllib.request
+    import urllib.error
+    
+    result = {
+        "current_version": DASHBOARD_VERSION,
+        "github_release": None,
+        "dockerhub": None,
+        "update_available": False,
+        "error": None,
+    }
+    
+    # Check GitHub releases
+    try:
+        github_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+        req = urllib.request.Request(
+            github_url,
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "HytaleDashboard/1.0",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode())
+                tag = data.get("tag_name", "").lstrip("v")
+                result["github_release"] = {
+                    "tag": data.get("tag_name", ""),
+                    "version": tag,
+                    "name": data.get("name", ""),
+                    "url": data.get("html_url", ""),
+                    "published": data.get("published_at", ""),
+                    "body": (data.get("body", "") or "")[:500],  # Truncate release notes
+                }
+                
+                # Compare versions
+                if tag and _version_compare(tag, DASHBOARD_VERSION) > 0:
+                    result["update_available"] = True
+    except urllib.error.HTTPError as e:
+        if e.code != 404:  # Ignore 404 (no releases)
+            result["error"] = f"GitHub API error: {e.code}"
+    except urllib.error.URLError as e:
+        result["error"] = f"GitHub connection error: {str(e.reason)}"
+    except Exception as e:
+        result["error"] = f"GitHub check failed: {str(e)}"
+    
+    # Check Docker Hub
+    try:
+        dockerhub_url = f"https://hub.docker.com/v2/repositories/{DOCKERHUB_REPO}/tags/latest"
+        with urllib.request.urlopen(dockerhub_url, timeout=10) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode())
+                result["dockerhub"] = {
+                    "last_updated": data.get("last_updated", ""),
+                    "digest": (data.get("digest", "") or "")[:19],  # Short digest
+                    "full_digest": data.get("digest", ""),
+                }
+    except urllib.error.HTTPError:
+        pass  # Docker Hub not reachable is not critical
+    except urllib.error.URLError:
+        pass
+    except Exception:
+        pass
+    
+    return result
+
+
+def _version_compare(v1: str, v2: str) -> int:
+    """
+    Compare two version strings.
+    Returns: >0 if v1 > v2, <0 if v1 < v2, 0 if equal.
+    """
+    def normalize(v: str) -> list[int]:
+        # Remove leading 'v' and split by dots
+        v = v.lstrip("v")
+        parts = []
+        for p in v.split("."):
+            # Extract numeric part
+            num = ""
+            for c in p:
+                if c.isdigit():
+                    num += c
+                else:
+                    break
+            parts.append(int(num) if num else 0)
+        return parts
+    
+    p1, p2 = normalize(v1), normalize(v2)
+    
+    # Pad shorter version with zeros
+    while len(p1) < len(p2):
+        p1.append(0)
+    while len(p2) < len(p1):
+        p2.append(0)
+    
+    for a, b in zip(p1, p2):
+        if a > b:
+            return 1
+        if a < b:
+            return -1
+    return 0
