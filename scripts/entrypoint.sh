@@ -87,7 +87,7 @@ fi
 
 # Fix permissions for volumes
 echo "[entrypoint] Setting up permissions..."
-chown -R hytale:hytale ${HYTALE_DIR}/universe || true
+chown -R hytale:hytale ${HYTALE_DIR}/Server/universe || true
 chown -R hytale:hytale ${HYTALE_DIR}/mods || true
 chown -R hytale:hytale ${HYTALE_DIR}/backups || true
 chown -R hytale:hytale ${HYTALE_DIR}/.downloader || true
@@ -95,12 +95,13 @@ chown -R hytale:hytale ${HYTALE_DIR}/logs || true
 
 # Create default world config directory structure if not exists
 # (needed because the 'universe' volume overrides what Dockerfile created)
-WORLD_CONFIG_DIR="${HYTALE_DIR}/universe/worlds/default"
+# Note: Since Hytale Server 2026.01, universe is stored in Server/universe/
+WORLD_CONFIG_DIR="${HYTALE_DIR}/Server/universe/worlds/default"
 WORLD_CONFIG_FILE="${WORLD_CONFIG_DIR}/config.json"
 if [ ! -d "$WORLD_CONFIG_DIR" ]; then
     echo "[entrypoint] Creating default world directory structure..."
     mkdir -p "$WORLD_CONFIG_DIR"
-    chown -R hytale:hytale "${HYTALE_DIR}/universe"
+    chown -R hytale:hytale "${HYTALE_DIR}/Server/universe"
 fi
 if [ ! -f "$WORLD_CONFIG_FILE" ]; then
     echo "[entrypoint] Creating default world config..."

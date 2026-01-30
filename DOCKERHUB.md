@@ -33,12 +33,13 @@ docker pull zonfacter/hytale-docker:latest
 mkdir -p hytale-data/{universe,mods,backups,downloader}
 
 # Run the container
+# Note: Universe path is Server/universe/ since Hytale Server 2026.01
 docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
   -p 5523:5523 \
-  -v ./hytale-data/universe:/opt/hytale-server/universe \
+  -v ./hytale-data/universe:/opt/hytale-server/Server/universe \
   -v ./hytale-data/mods:/opt/hytale-server/mods \
   -v ./hytale-data/backups:/opt/hytale-server/backups \
   -v ./hytale-data/downloader:/opt/hytale-server/.downloader \
@@ -112,10 +113,12 @@ Example output:
 
 | Path | Description |
 |------|-------------|
-| `/opt/hytale-server/universe` | World data (players, builds) |
+| `/opt/hytale-server/Server/universe` | World data (players, builds) - **NEW in v1.8.0** |
 | `/opt/hytale-server/mods` | Installed mods |
 | `/opt/hytale-server/backups` | Backup files |
 | `/opt/hytale-server/.downloader` | Downloader & OAuth credentials |
+
+> **Important / Wichtig:** Since Hytale Server 2026.01, world data is stored in `Server/universe/` instead of `universe/`. / Seit Hytale Server 2026.01 werden Weltdaten in `Server/universe/` statt `universe/` gespeichert.
 
 ## Docker Compose
 
@@ -135,7 +138,8 @@ services:
       - CF_API_KEY=your-curseforge-key
       - TZ=Europe/Berlin
     volumes:
-      - ./data/universe:/opt/hytale-server/universe
+      # Note: Universe path changed in v1.8.0 to Server/universe/
+      - ./data/universe:/opt/hytale-server/Server/universe
       - ./data/mods:/opt/hytale-server/mods
       - ./data/backups:/opt/hytale-server/backups
       - ./data/downloader:/opt/hytale-server/.downloader
@@ -151,6 +155,8 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
+| `1.8.0`, `1.8` | **BREAKING:** Universe path changed to `Server/universe/` (Hytale 2026.01 compatibility) |
+| `1.7.0`, `1.7` | Tailscale VPN integration |
 | `1.6.0`, `1.6` | Console commands, auth buttons, port display, version detection, persistent auth |
 | `1.5.0`, `1.5` | Screen wrapper for server console |
 | `1.4.0`, `1.4` | Runtime settings (CF_API_KEY, DOWNLOADER_URL) |
@@ -220,12 +226,13 @@ docker pull zonfacter/hytale-docker:latest
 mkdir -p hytale-data/{universe,mods,backups,downloader}
 
 # Container starten
+# Hinweis: Universe-Pfad ist Server/universe/ seit Hytale Server 2026.01
 docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
   -p 5523:5523 \
-  -v ./hytale-data/universe:/opt/hytale-server/universe \
+  -v ./hytale-data/universe:/opt/hytale-server/Server/universe \
   -v ./hytale-data/mods:/opt/hytale-server/mods \
   -v ./hytale-data/backups:/opt/hytale-server/backups \
   -v ./hytale-data/downloader:/opt/hytale-server/.downloader \
@@ -299,10 +306,12 @@ Beispiel-Ausgabe:
 
 | Pfad | Beschreibung |
 |------|--------------|
-| `/opt/hytale-server/universe` | Weltdaten (Spieler, Gebäude) |
+| `/opt/hytale-server/Server/universe` | Weltdaten (Spieler, Gebäude) - **NEU in v1.8.0** |
 | `/opt/hytale-server/mods` | Installierte Mods |
 | `/opt/hytale-server/backups` | Backup-Dateien |
 | `/opt/hytale-server/.downloader` | Downloader & OAuth-Credentials |
+
+> **Wichtig:** Seit Hytale Server 2026.01 werden Weltdaten in `Server/universe/` statt `universe/` gespeichert. Bei einem Update von v1.7 oder früher müssen die Daten migriert werden!
 
 ## Docker Compose
 
@@ -322,7 +331,8 @@ services:
       - CF_API_KEY=dein-curseforge-key
       - TZ=Europe/Berlin
     volumes:
-      - ./data/universe:/opt/hytale-server/universe
+      # Hinweis: Universe-Pfad geändert in v1.8.0 zu Server/universe/
+      - ./data/universe:/opt/hytale-server/Server/universe
       - ./data/mods:/opt/hytale-server/mods
       - ./data/backups:/opt/hytale-server/backups
       - ./data/downloader:/opt/hytale-server/.downloader
@@ -338,6 +348,8 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
+| `1.8.0`, `1.8` | **BREAKING:** Universe-Pfad geändert zu `Server/universe/` (Hytale 2026.01 Kompatibilität) |
+| `1.7.0`, `1.7` | Tailscale VPN Integration |
 | `1.6.0`, `1.6` | Konsolen-Befehle, Auth-Buttons, Port-Anzeige, Versions-Erkennung, persistente Auth |
 | `1.5.0`, `1.5` | Screen-Wrapper für Server-Konsole |
 | `1.4.0`, `1.4` | Runtime Settings (CF_API_KEY, DOWNLOADER_URL) |

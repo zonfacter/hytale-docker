@@ -43,11 +43,12 @@ Docker image for **Hytale Dedicated Server** with integrated **Web Dashboard**.
 docker pull zonfacter/hytale-docker:latest
 
 # Run container with named volumes (recommended)
+# Note: Universe path is Server/universe/ since Hytale Server 2026.01
 docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
-  -v hytale-universe:/opt/hytale-server/universe \
+  -v hytale-universe:/opt/hytale-server/Server/universe \
   -v hytale-mods:/opt/hytale-server/mods \
   -v hytale-backups:/opt/hytale-server/backups \
   -v hytale-downloader:/opt/hytale-server/.downloader \
@@ -65,11 +66,12 @@ docker run -d \
 mkdir -p hytale-data/{universe,mods,backups,downloader}
 
 # Run container with bind mounts
+# Note: Universe path is Server/universe/ since Hytale Server 2026.01
 docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
-  -v $(pwd)/hytale-data/universe:/opt/hytale-server/universe \
+  -v $(pwd)/hytale-data/universe:/opt/hytale-server/Server/universe \
   -v $(pwd)/hytale-data/mods:/opt/hytale-server/mods \
   -v $(pwd)/hytale-data/backups:/opt/hytale-server/backups \
   -v $(pwd)/hytale-data/downloader:/opt/hytale-server/.downloader \
@@ -290,11 +292,13 @@ Data is stored in Docker-managed named volumes by default (recommended for produ
 
 | Volume Name | Container Path | Description |
 |-------------|----------------|-------------|
-| `hytale-universe` | `/opt/hytale-server/universe` | World data (players, builds) |
+| `hytale-universe` | `/opt/hytale-server/Server/universe` | World data (players, builds) |
 | `hytale-mods` | `/opt/hytale-server/mods` | Installed mods |
 | `hytale-backups` | `/opt/hytale-server/backups` | Backup files |
 | `hytale-downloader` | `/opt/hytale-server/.downloader` | Downloader & OAuth credentials |
 | `hytale-logs` | `/opt/hytale-server/logs` | Server logs |
+
+> **Note:** Since Hytale Server 2026.01, world data is stored in `Server/universe/` instead of `universe/`. If upgrading from an older version, see [Migration Guide](#migration-from-v17-or-earlier).
 
 ### Volume Configuration Options
 
@@ -401,6 +405,45 @@ environment:
 - ⚙️ [Configuration & Read-Only Containers](docs/configuration.md)
 - 🔧 [IPC Mechanisms & FIFO Documentation](docs/ipc-mechanisms.md)
 - 📊 [Dashboard Repository](https://github.com/zonfacter/hytale-dashboard)
+
+---
+
+## Migration from v1.7 or Earlier
+
+### Universe Path Change (v1.8.0+)
+
+**Problem:** Since Hytale Server 2026.01, world data is stored in `Server/universe/` instead of `universe/`. If you upgrade from v1.7 or earlier, your world data may appear to be lost.
+
+**Ursache / Cause:**
+- 🇩🇪 Die neue Hytale Server Version speichert Weltdaten in `Server/universe/` statt `universe/`
+- 🇬🇧 The new Hytale Server version stores world data in `Server/universe/` instead of `universe/`
+
+**Solution:**
+
+```bash
+# 1. Stop the container
+docker-compose down
+
+# 2. Copy data from old location to new location
+docker run --rm \
+  -v hytale-universe:/old \
+  -v hytale-universe-new:/new \
+  ubuntu cp -r /old/. /new/
+
+# 3. Update docker-compose.yml volume path:
+#    Change: hytale-universe:/opt/hytale-server/universe
+#    To:     hytale-universe-new:/opt/hytale-server/Server/universe
+
+# 4. Start the container
+docker-compose up -d
+```
+
+**Alternative (Bind Mounts):**
+```bash
+# If using bind mounts, simply update the path in docker-compose.yml:
+# Old: ./data/universe:/opt/hytale-server/universe
+# New: ./data/universe:/opt/hytale-server/Server/universe
+```
 
 ---
 

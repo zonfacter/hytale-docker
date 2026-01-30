@@ -12,7 +12,7 @@ FROM ${DEBIAN_BASE_IMAGE}
 
 LABEL maintainer="zonfacter"
 LABEL description="Hytale Dedicated Server with Web Dashboard"
-LABEL version="1.6.0"
+LABEL version="1.8.0"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -75,9 +75,11 @@ RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gp
     && rm -rf /var/lib/apt/lists/*
 
 # Create users and directories
+# Note: Since Hytale Server 2026.01, universe data is stored in Server/universe/
+# (the server runs from the Server/ subdirectory)
 RUN groupadd -g ${PGID} hytale && \
     useradd -u ${PUID} -g hytale -m -d ${HYTALE_DIR} -s /bin/bash hytale && \
-    mkdir -p ${HYTALE_DIR}/{backups,mods,universe/worlds/default,.downloader,logs} && \
+    mkdir -p ${HYTALE_DIR}/{backups,mods,Server/universe/worlds/default,.downloader,logs} && \
     mkdir -p ${DASHBOARD_DIR} && \
     chown -R hytale:hytale ${HYTALE_DIR}
 
@@ -92,7 +94,7 @@ RUN python3 -m venv .venv && \
 # Copy configuration files
 COPY --chown=hytale:hytale config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY --chown=hytale:hytale config/server-config.json ${HYTALE_DIR}/config.json
-COPY --chown=hytale:hytale config/world-config.json ${HYTALE_DIR}/universe/worlds/default/config.json
+COPY --chown=hytale:hytale config/world-config.json ${HYTALE_DIR}/Server/universe/worlds/default/config.json
 COPY --chown=hytale:hytale scripts/entrypoint.sh /entrypoint.sh
 COPY --chown=hytale:hytale scripts/start-server.sh ${HYTALE_DIR}/start.sh
 # Scripts that need to persist in volumes are copied at runtime by entrypoint
@@ -133,7 +135,8 @@ RUN python3 ${DASHBOARD_DIR}/apply_docker_patches.py ${DASHBOARD_DIR} && \
 EXPOSE 5520/udp 5523/tcp 8088/tcp
 
 # Volumes for persistent data
-VOLUME ["${HYTALE_DIR}/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/backups", "${HYTALE_DIR}/.downloader", "/var/lib/tailscale"]
+# Note: Universe is now in Server/universe/ (Hytale Server 2026.01+)
+VOLUME ["${HYTALE_DIR}/Server/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/backups", "${HYTALE_DIR}/.downloader", "/var/lib/tailscale"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

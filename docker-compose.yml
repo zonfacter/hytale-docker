@@ -104,9 +104,10 @@ services:
 
     # Persistent Data Volumes
     # Using named volumes (recommended for production and portability)
+    # Note: Universe path changed in Hytale Server 2026.01+ to Server/universe/
     volumes:
       # Game world data (players, buildings, etc.)
-      - hytale-universe:/opt/hytale-server/universe
+      - hytale-universe:/opt/hytale-server/Server/universe
 
       # Installed mods
       - hytale-mods:/opt/hytale-server/mods
@@ -130,9 +131,10 @@ services:
     # Alternative: Bind mounts with relative paths
     # Use this if you need direct host file system access (e.g., for backups or config editing)
     # IMPORTANT: Must run docker-compose from the repository root directory
+    # Note: Universe path changed in Hytale Server 2026.01+ to Server/universe/
     # For production, consider using absolute paths instead
     # volumes:
-    #   - ./data/universe:/opt/hytale-server/universe
+    #   - ./data/universe:/opt/hytale-server/Server/universe
     #   - ./data/mods:/opt/hytale-server/mods
     #   - ./data/backups:/opt/hytale-server/backups
     #   - ./data/downloader:/opt/hytale-server/.downloader
@@ -141,8 +143,9 @@ services:
 
     # Alternative: Bind mounts with absolute paths (most reliable for production)
     # Replace /path/to/hytale-data with your actual data directory path
+    # Note: Universe path changed in Hytale Server 2026.01+ to Server/universe/
     # volumes:
-    #   - /path/to/hytale-data/universe:/opt/hytale-server/universe
+    #   - /path/to/hytale-data/universe:/opt/hytale-server/Server/universe
     #   - /path/to/hytale-data/mods:/opt/hytale-server/mods
     #   - /path/to/hytale-data/backups:/opt/hytale-server/backups
     #   - /path/to/hytale-data/downloader:/opt/hytale-server/.downloader

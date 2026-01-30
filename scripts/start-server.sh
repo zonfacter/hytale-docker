@@ -7,9 +7,13 @@
 # issues in certain environments (storage drivers, Kubernetes, Windows).
 # For detailed documentation and alternative IPC mechanisms, see:
 # docs/ipc-mechanisms.md
+#
+# IMPORTANT: Since Hytale Server 2026.01, the server must run from the Server/
+# subdirectory. Universe data is stored in Server/universe/ (not /universe/).
 #===============================================================================
 
-cd /opt/hytale-server
+HYTALE_DIR="/opt/hytale-server"
+cd "$HYTALE_DIR"
 
 PIPE=".console_pipe"
 SERVER_JAR="Server/HytaleServer.jar"
@@ -27,7 +31,7 @@ if [ ! -f "$ASSETS" ]; then
     exit 1
 fi
 
-# Create FIFO pipe if not exists
+# Create FIFO pipe if not exists (in HYTALE_DIR, not Server/)
 # Note: Named Pipes (FIFO) may have compatibility issues in some environments.
 # See docs/ipc-mechanisms.md for troubleshooting and alternatives.
 if [ ! -p "$PIPE" ]; then
@@ -42,15 +46,20 @@ echo "[start.sh] Port: ${HYTALE_PORT:-5520}"
 # Cleanup on exit
 cleanup() {
     echo "[start.sh] Shutting down..."
-    rm -f "$PIPE"
+    rm -f "$HYTALE_DIR/$PIPE"
     kill 0
 }
 trap cleanup EXIT INT TERM
 
+# Change to Server directory (required since Hytale 2026.01)
+# This ensures universe data is created in Server/universe/
+cd "$HYTALE_DIR/Server"
+
 # Start server with FIFO pipe for stdin
-tail -f "$PIPE" | exec java \
+# Note: Assets path is relative to HYTALE_DIR (parent directory)
+tail -f "$HYTALE_DIR/$PIPE" | exec java \
     -Xms${HYTALE_MEMORY_MIN:-2G} \
     -Xmx${HYTALE_MEMORY_MAX:-4G} \
-    -jar "$SERVER_JAR" \
-    --assets "$ASSETS" \
+    -jar "HytaleServer.jar" \
+    --assets "../$ASSETS" \
     --bind 0.0.0.0:${HYTALE_PORT:-5520}
