@@ -395,9 +395,24 @@ async def api_server_action(action: str, user: str = Depends(verify_credentials)
 
 # [DockerPatch] hard_log_console_overrides
 try:
+    # Auto-detect container runtime without forcing developer/native systems.
+    if not DOCKER_MODE:
+        _container_markers = [
+            "/.dockerenv",
+            "/run/.containerenv",
+            "/var/run/supervisor.sock",
+            "/etc/supervisor/conf.d/supervisord.conf",
+        ]
+        if any(Path(m).exists() for m in _container_markers):
+            DOCKER_MODE = True
+
     if DOCKER_MODE:
+        from docker_overrides import get_service_status as _docker_get_service_status
         from docker_overrides import get_logs as _docker_get_logs
         from docker_overrides import get_console_output as _docker_get_console_output
+
+        def get_service_status() -> dict:
+            return _docker_get_service_status()
 
         def get_logs() -> list[str]:
             return _docker_get_logs()
@@ -405,7 +420,7 @@ try:
         def _get_console_output(since: str = "") -> list[str]:
             return _docker_get_console_output(since)
 
-        print("[Dashboard] Applied Docker hard overrides for logs/console")
+        print("[Dashboard] Applied Docker hard overrides for status/logs/console")
 except Exception as e:
     print(f"[Dashboard] Warning: Docker hard overrides not applied: {e}")
 """

@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.9.4] - 2026-02-08
+
+### Fixed
+- Docker mode detection now auto-fallbacks via container markers in patched dashboard runtime.
+- In container environments without reliable `/.dockerenv`, status/log/console overrides are still applied.
+- Prevents fallback to native `systemctl` path in Docker-like runtimes.
+
 ## [v1.9.3] - 2026-02-08
 
 ### Fixed
