@@ -420,6 +420,7 @@ Hinweis: Draft-Releases sind nur fuer Repo-Collaborators sichtbar, bis sie veroe
 
 - 🇩🇪 [Einrichtungsanleitung (Deutsch)](docs/setup-guide-de.md)
 - 🇬🇧 [Setup Guide (English)](docs/setup-guide-en.md)
+- 🧭 [Migration v1.9.5 (Server-Persistenz)](docs/migration-v1.9.5-de.md)
 - ⚙️ [Configuration & Read-Only Containers](docs/configuration.md)
 - 🔧 [IPC Mechanisms & FIFO Documentation](docs/ipc-mechanisms.md)
 - 📊 [Dashboard Repository](https://github.com/zonfacter/hytale-dashboard)
