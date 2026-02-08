@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.9.8] - 2026-02-08
+
+### Fixed
+- Docker-Hard-Overrides jetzt fehlertolerant (kein kompletter Ausfall bei Teil-Importfehlern).
+- `/manage` Console sendet im Docker immer in `.server_command` statt FIFO-Abhaengigkeit.
+- Backup/Create und Version/Update Endpunkte werden im Docker-Modus robust auf Docker-Implementierungen geroutet (kein `/usr/local/sbin/...` mehr).
+- EntryPoint erzeugt `worlds/default/config.json` nur noch bei wirklich leerer Weltstruktur, um `World default already exists on disk` Konflikte zu vermeiden.
+
 ## [v1.9.7] - 2026-02-08
 
 ### Fixed

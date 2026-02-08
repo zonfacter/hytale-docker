@@ -116,8 +116,10 @@ if [ ! -d "$WORLD_CONFIG_DIR" ]; then
     chown -R hytale:hytale "${HYTALE_DIR}/Server/universe"
 fi
 if [ ! -f "$WORLD_CONFIG_FILE" ]; then
-    echo "[entrypoint] Creating default world config..."
-    cat > "$WORLD_CONFIG_FILE" << 'EOFCONFIG'
+    # Only seed a default world config on truly empty first boot.
+    if [ -z "$(ls -A "${HYTALE_DIR}/Server/universe/worlds" 2>/dev/null || true)" ]; then
+        echo "[entrypoint] Creating default world config..."
+        cat > "$WORLD_CONFIG_FILE" << 'EOFCONFIG'
 {
   "Version": 1,
   "Name": "default",
@@ -128,7 +130,10 @@ if [ ! -f "$WORLD_CONFIG_FILE" ]; then
   }
 }
 EOFCONFIG
-    chown hytale:hytale "$WORLD_CONFIG_FILE"
+        chown hytale:hytale "$WORLD_CONFIG_FILE"
+    else
+        echo "[entrypoint] Existing world data detected, skipping default world config seed"
+    fi
 fi
 
 # Copy download script to volume (needed for dashboard setup wizard)

@@ -411,12 +411,15 @@ try:
         from fastapi import Depends, HTTPException, Request
         from fastapi.responses import JSONResponse
         from fastapi.routing import APIRoute
-        from docker_overrides import get_service_status as _docker_get_service_status
-        from docker_overrides import get_logs as _docker_get_logs
-        from docker_overrides import get_console_output as _docker_get_console_output
-        from docker_overrides import get_server_control_commands as _docker_get_server_control_commands
-        from docker_overrides import run_backup as _docker_run_backup
-        from docker_overrides import get_tailscale_summary as _docker_get_tailscale_summary
+        import docker_overrides as _dov
+        _docker_get_service_status = _dov.get_service_status
+        _docker_get_logs = _dov.get_logs
+        _docker_get_console_output = _dov.get_console_output
+        _docker_get_server_control_commands = _dov.get_server_control_commands
+        _docker_run_backup = _dov.run_backup
+        _docker_check_version = getattr(_dov, "check_version", lambda: {"current_version": "unknown", "latest_version": "unknown", "update_available": False, "docker_mode": True, "error": "version check unavailable"})
+        _docker_run_update = getattr(_dov, "run_update", lambda: {"docker_mode": True, "error": "update unavailable"})
+        _docker_get_tailscale_summary = getattr(_dov, "get_tailscale_summary", lambda: {"enabled": False, "connected": False, "backend_state": "unknown", "ip": "", "error": "tailscale summary unavailable"})
 
         def get_service_status() -> dict:
             return _docker_get_service_status()
@@ -461,6 +464,20 @@ try:
                 raise HTTPException(status_code=500, detail=output)
             return {"ok": True, "output": output}
 
+        async def _docker_api_backup_create(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert. ALLOW_CONTROL=true setzen.")
+            output, rc = _docker_run_backup()
+            if rc != 0:
+                raise HTTPException(status_code=500, detail=output)
+            return {"ok": True, "output": output}
+
+        async def _docker_api_version_check(user: str = Depends(verify_credentials)):
+            return JSONResponse(_docker_check_version())
+
+        async def _docker_api_update_run(user: str = Depends(verify_credentials)):
+            return JSONResponse(_docker_run_update())
+
         async def _docker_api_set_backup_frequency(request: Request, user: str = Depends(verify_credentials)):
             raise HTTPException(status_code=400, detail="Backup-Frequenz kann in Docker nicht geaendert werden.")
 
@@ -474,10 +491,12 @@ try:
             is_allowed, error_msg = should_allow_console_command(command)
             if not is_allowed:
                 raise HTTPException(status_code=400, detail=error_msg)
+            command_file = SERVER_DIR / ".server_command"
             try:
-                send_console_command(command)
-            except RuntimeError as exc:
-                raise HTTPException(status_code=500, detail=str(exc))
+                with open(command_file, "a", encoding="utf-8") as f:
+                    f.write(command + "\\n")
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {exc}")
             return {"ok": True, "command": command}
 
         async def _docker_api_auth_login_start(request: Request, user: str = Depends(verify_credentials)):
@@ -489,9 +508,11 @@ try:
             method = str(body.get("method", "device")).strip().lower()
             if method not in ("device", "browser"):
                 method = "device"
+            command_file = SERVER_DIR / ".server_command"
             try:
-                send_console_command(f"/auth login {method}")
-            except RuntimeError as e:
+                with open(command_file, "a", encoding="utf-8") as f:
+                    f.write(f"/auth login {method}\\n")
+            except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
             return {"ok": True, "message": f"Auth-Login ({method}) gestartet."}
 
@@ -534,10 +555,14 @@ try:
 
         _replace_route("/api/server/{action}", "POST", _docker_api_server_action)
         _replace_route("/api/backup/run", "POST", _docker_api_backup_run)
+        _replace_route("/api/backup/create", "POST", _docker_api_backup_create)
+        _replace_route("/api/backups/create", "POST", _docker_api_backup_create)
         _replace_route("/api/config/backup-frequency", "POST", _docker_api_set_backup_frequency)
         _replace_route("/api/console/send", "POST", _docker_api_console_send)
         _replace_route("/api/auth/login/start", "POST", _docker_api_auth_login_start)
         _replace_route("/api/auth/status", "GET", _docker_api_auth_status)
+        _replace_route("/api/version/check", "POST", _docker_api_version_check)
+        _replace_route("/api/update/run", "POST", _docker_api_update_run)
 
         print("[Dashboard] Applied Docker hard overrides for status/logs/console/routes")
 except Exception as e:
