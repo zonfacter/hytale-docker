@@ -299,6 +299,33 @@ def get_cf_api_key_dynamic():
         new_cf_header = '"x-api-key": api_key,'
         content = content.replace(old_cf_header, new_cf_header)
 
+    # ---------------------------------------------------------------------------
+    # Hard overrides for current upstream dashboard signatures
+    # ---------------------------------------------------------------------------
+    # Newer upstream app.py versions changed function bodies/signatures, so some
+    # string replacements above may not trigger. This fallback ensures Docker log
+    # and console output always use file-based overrides instead of journalctl.
+    hard_override_marker = "# [DockerPatch] hard_log_console_overrides"
+    if hard_override_marker not in content:
+        content += """
+
+# [DockerPatch] hard_log_console_overrides
+try:
+    if DOCKER_MODE:
+        from docker_overrides import get_logs as _docker_get_logs
+        from docker_overrides import get_console_output as _docker_get_console_output
+
+        def get_logs() -> list[str]:
+            return _docker_get_logs()
+
+        def _get_console_output(since: str = "") -> list[str]:
+            return _docker_get_console_output(since)
+
+        print("[Dashboard] Applied Docker hard overrides for logs/console")
+except Exception as e:
+    print(f"[Dashboard] Warning: Docker hard overrides not applied: {e}")
+"""
+
     # Write the patched content
     app_py.write_text(content)
     print(f"✓ Successfully patched {app_py}")

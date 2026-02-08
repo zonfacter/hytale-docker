@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.9.2] - 2026-02-08
+
+### Fixed
+- Docker Dashboard kann Logs wieder zuverlässig auslesen (`/api/logs` und `/api/console/output`).
+- `dashboard/apply_docker_patches.py` um robuste Hard-Overrides erweitert, damit Log-/Console-Funktionen auch bei geaenderten Upstream-Signaturen weiter auf `docker_overrides` umgeleitet werden.
+
 ## [v1.9.1] - 2026-02-08 (Draft)
 
 ### Added
