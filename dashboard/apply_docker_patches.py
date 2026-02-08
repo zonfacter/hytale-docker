@@ -490,11 +490,10 @@ try:
             if method not in ("device", "browser"):
                 method = "device"
             try:
-                send_console_command("/auth persistence Encrypted")
                 send_console_command(f"/auth login {method}")
             except RuntimeError as e:
                 raise HTTPException(status_code=500, detail=str(e))
-            return {"ok": True, "message": f"Auth-Login ({method}) mit Persistence gestartet."}
+            return {"ok": True, "message": f"Auth-Login ({method}) gestartet."}
 
         async def _docker_api_auth_status(user: str = Depends(verify_credentials)):
             lines = _docker_get_logs()

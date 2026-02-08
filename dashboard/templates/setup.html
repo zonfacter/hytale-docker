@@ -800,11 +800,11 @@
     async function sendAuthCommand(method) {
       const authLog = document.getElementById('auth-log');
       const authStatus = document.getElementById('auth-status');
-      const persistenceCmd = '/auth persistence Encrypted';
       const loginCmd = '/auth login ' + method;
+      const persistenceCmd = '/auth persistence Encrypted';
 
       authLog.style.display = 'block';
-      authLog.innerHTML = '<span>Sende ' + persistenceCmd + ' und danach ' + loginCmd + ' ...</span>';
+      authLog.innerHTML = '<span>Sende ' + loginCmd + ' ...</span>';
       authStatus.innerHTML = '';
 
       try {
@@ -817,23 +817,40 @@
           return await resp.json();
         };
 
-        const persistResult = await sendCmd(persistenceCmd);
-        if (!persistResult.ok) {
-          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (persistResult.error || 'Persistence fehlgeschlagen') + '</span>';
+        const loginResult = await sendCmd(loginCmd);
+        if (!loginResult.ok) {
+          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (loginResult.error || 'Login fehlgeschlagen') + '</span>';
           return;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const loginResult = await sendCmd(loginCmd);
+        authStatus.innerHTML = '<span style="color: var(--green);">✓ Login gestartet. Warte auf Token ...</span>';
+        setTimeout(refreshAuthLog, 1500);
+        const logPoll = setInterval(refreshAuthLog, 3000);
 
-        if (loginResult.ok) {
-          authStatus.innerHTML = '<span style="color: var(--green);">✓ Persistence gesetzt und Login gestartet / Persistence set and login started</span>';
-          setTimeout(refreshAuthLog, 2000);
-          const pollInterval = setInterval(refreshAuthLog, 3000);
-          setTimeout(() => clearInterval(pollInterval), 90000);
-        } else {
-          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (loginResult.error || 'Login fehlgeschlagen') + '</span>';
-        }
+        const statusPoll = setInterval(async () => {
+          try {
+            const resp = await fetch('/api/auth/status');
+            const status = await resp.json();
+            if (status.token_configured) {
+              clearInterval(statusPoll);
+              clearInterval(logPoll);
+              const persistResult = await sendCmd(persistenceCmd);
+              if (persistResult.ok) {
+                authStatus.innerHTML = '<span style="color: var(--green);">✓ Token erhalten und Persistence gesetzt / Token received and persistence set</span>';
+              } else {
+                authStatus.innerHTML = '<span style="color: var(--yellow);">⚠ Token ok, Persistence bitte manuell setzen</span>';
+              }
+              setTimeout(refreshAuthLog, 1000);
+            }
+          } catch (e) {
+            console.error('Failed to check auth status:', e);
+          }
+        }, 4000);
+
+        setTimeout(() => {
+          clearInterval(statusPoll);
+          clearInterval(logPoll);
+        }, 120000);
       } catch (e) {
         authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + e.message + '</span>';
       }

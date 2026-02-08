@@ -1,10 +1,16 @@
 # Changelog
 
+## [v1.9.7] - 2026-02-08
+
+### Fixed
+- Auth-Reihenfolge korrigiert: zuerst `/auth login {device|browser}`, danach wird `persistence Encrypted` erst nach erfolgreichem Token gesetzt.
+- Docker-Hard-Override fuer `/api/auth/login/start` startet nur noch den Login-Flow (keine vorzeitige Persistence).
+
 ## [v1.9.6] - 2026-02-08
 
 ### Fixed
 - Docker Manage-Console nutzt jetzt robust den Wrapper-Command-Pfad statt alter FIFO-Abhaengigkeit (`/api/console/send`), auch bei Upstream-Signatur-Aenderungen.
-- Setup-Auth fuehrt automatisch `/auth persistence Encrypted` vor `/auth login {device|browser}` aus.
+- Setup-Auth fuehrt erst `/auth login {device|browser}` aus und setzt `persistence Encrypted` erst nach erfolgreichem Token.
 - OAuth/HTTP-Links im Setup-Log bleiben klickbar (kein fehlerhaftes HTML-Rewriting mehr).
 - Port-Mapping-Erkennung per Docker-Socket wurde fuer cgroupv1/v2/systemd-Scope robuster gemacht.
 - Docker Socket Gruppen-Mapping im EntryPoint auf GID-basierten Zugriff gehaertet.
