@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.9.3] - 2026-02-08
+
+### Fixed
+- Docker Dashboard Service-Control in der Integration robust gegen Upstream-Aenderungen gemacht:
+  - `api/server/{action}` wird im Docker-Kontext zuverlaessig auf `supervisorctl` geroutet.
+  - Keine `docker start/stop/restart` Aufrufe mehr fuer den In-Container-Servicepfad.
+- Docker Socket Rechte gehaertet (`scripts/entrypoint.sh`):
+  - kein `chmod 666` mehr,
+  - stattdessen gruppenbasierter Zugriff (`g+rw`) + Warnung bei fehlender Leseberechtigung.
+
+### Added
+- PR Template mit `docker_impact`-Pflichtcheck in beiden Repos.
+
 ## [v1.9.2] - 2026-02-08
 
 ### Fixed
