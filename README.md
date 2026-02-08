@@ -48,6 +48,7 @@ docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
+  -v hytale-server-bin:/opt/hytale-server/Server \
   -v hytale-universe:/opt/hytale-server/Server/universe \
   -v hytale-mods:/opt/hytale-server/mods \
   -v hytale-backups:/opt/hytale-server/backups \
@@ -63,7 +64,7 @@ docker run -d \
 
 ```bash
 # Create data directory
-mkdir -p hytale-data/{universe,mods,backups,downloader}
+mkdir -p hytale-data/{server,universe,mods,backups,downloader}
 
 # Run container with bind mounts
 # Note: Universe path is Server/universe/ since Hytale Server 2026.01
@@ -71,6 +72,7 @@ docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
+  -v $(pwd)/hytale-data/server:/opt/hytale-server/Server \
   -v $(pwd)/hytale-data/universe:/opt/hytale-server/Server/universe \
   -v $(pwd)/hytale-data/mods:/opt/hytale-server/mods \
   -v $(pwd)/hytale-data/backups:/opt/hytale-server/backups \

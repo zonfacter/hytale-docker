@@ -245,7 +245,14 @@
           Start the download and authenticate with your Hytale account.
         </p>
 
-        <div class="warning-box" id="oauth-warning">
+                <div class="warning-box hidden" id="persistence-warning" style="border-color: var(--red); background: rgba(239,68,68,0.10); margin-top: 10px;">
+          <strong class="lang-de">❌ Persistenz-Fehler:</strong>
+          <strong class="lang-en hidden">❌ Persistence error:</strong>
+          <div class="lang-de" id="persistence-warning-de" style="margin-top: 6px; white-space: pre-line;"></div>
+          <div class="lang-en hidden" id="persistence-warning-en" style="margin-top: 6px; white-space: pre-line;"></div>
+        </div>
+
+<div class="warning-box" id="oauth-warning">
           <strong class="lang-de">⚠️ Wichtig:</strong>
           <strong class="lang-en hidden">⚠️ Important:</strong>
           <span class="lang-de">
@@ -510,16 +517,44 @@
           const downloaderStatus = document.getElementById('downloader-status');
           const btnDownload = document.getElementById('btn-download');
 
+          const persistence = data.persistence || { ok: true, mounted: {}, warnings: [] };
+          const serverMountMissing = !(persistence.mounted && persistence.mounted.server_bin);
+          const persistenceWarning = document.getElementById('persistence-warning');
+          const persistenceWarningDe = document.getElementById('persistence-warning-de');
+          const persistenceWarningEn = document.getElementById('persistence-warning-en');
+
           if (data.downloader_exists) {
             step1Num.classList.add('done');
             step1Num.textContent = '✓';
             downloaderStatus.innerHTML = '<span style="color: var(--green);">✓ Downloader gefunden / Downloader found</span>';
-            btnDownload.disabled = false;
           } else {
             step1Num.classList.remove('done');
             step1Num.textContent = '1';
             downloaderStatus.innerHTML = '<span style="color: var(--red);">✗ Downloader nicht gefunden / Downloader not found</span>';
+          }
+
+          if (serverMountMissing) {
             btnDownload.disabled = true;
+            if (persistenceWarning) {
+              persistenceWarning.classList.remove('hidden');
+            }
+            if (persistenceWarningDe) {
+              persistenceWarningDe.textContent =
+                'Der Mount /opt/hytale-server/Server fehlt.\n' +
+                'Bitte Container neu erstellen und diesen Pfad persistent mounten.\n' +
+                'Ohne diesen Mount musst du nach Updates den Server erneut herunterladen.';
+            }
+            if (persistenceWarningEn) {
+              persistenceWarningEn.textContent =
+                'Mount /opt/hytale-server/Server is missing.\n' +
+                'Please recreate the container and mount this path persistently.\n' +
+                'Without this mount, server re-download is required after updates.';
+            }
+          } else {
+            btnDownload.disabled = !data.downloader_exists;
+            if (persistenceWarning) {
+              persistenceWarning.classList.add('hidden');
+            }
           }
 
           // Update Step 2

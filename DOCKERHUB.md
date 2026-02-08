@@ -30,7 +30,7 @@ A ready-to-use Docker image that includes:
 docker pull zonfacter/hytale-docker:latest
 
 # Create data directories
-mkdir -p hytale-data/{universe,mods,backups,downloader}
+mkdir -p hytale-data/{server,universe,mods,backups,downloader}
 
 # Run the container
 # Note: Universe path is Server/universe/ since Hytale Server 2026.01
@@ -39,6 +39,7 @@ docker run -d \
   -p 8088:8088 \
   -p 5520:5520/udp \
   -p 5523:5523 \
+  -v ./hytale-data/server:/opt/hytale-server/Server \
   -v ./hytale-data/universe:/opt/hytale-server/Server/universe \
   -v ./hytale-data/mods:/opt/hytale-server/mods \
   -v ./hytale-data/backups:/opt/hytale-server/backups \

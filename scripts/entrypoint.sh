@@ -224,6 +224,23 @@ mkdir -p "${SUPERVISOR_CONFIG_DIR}"
 # Copy base configuration to writable location
 cp /etc/supervisor/conf.d/supervisord.conf "${SUPERVISOR_CONFIG}"
 
+# Try to restore server binaries from persistent downloader cache if mount is missing/empty
+SERVER_CACHE_ARCHIVE="${HYTALE_DIR}/.downloader/server-files-cache.tar.gz"
+SERVER_JAR="${HYTALE_DIR}/Server/HytaleServer.jar"
+ASSETS_ZIP="${HYTALE_DIR}/Assets.zip"
+if [ ! -f "$SERVER_JAR" ] || [ ! -f "$ASSETS_ZIP" ]; then
+    if [ -f "$SERVER_CACHE_ARCHIVE" ]; then
+        echo "[entrypoint] Server files missing. Attempting restore from persistent downloader cache..."
+        if tar -xzf "$SERVER_CACHE_ARCHIVE" -C "${HYTALE_DIR}" 2>/dev/null; then
+            echo "[entrypoint] Server files restored from cache"
+            chown -R hytale:hytale "${HYTALE_DIR}/Server" 2>/dev/null || true
+            chown hytale:hytale "${HYTALE_DIR}/Assets.zip" 2>/dev/null || true
+        else
+            echo "[entrypoint] WARNING: Failed to restore server files from cache"
+        fi
+    fi
+fi
+
 # Check if server is installed
 SERVER_JAR="${HYTALE_DIR}/Server/HytaleServer.jar"
 ASSETS_ZIP="${HYTALE_DIR}/Assets.zip"

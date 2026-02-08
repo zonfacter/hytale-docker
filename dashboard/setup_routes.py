@@ -36,11 +36,23 @@ async def setup_page(request: Request):
 @router.get("/api/setup/status")
 async def setup_status():
     """Check the current setup status."""
+    persistence = {
+        "ok": True,
+        "mounted": {},
+        "warnings": [],
+    }
+    try:
+        from docker_overrides import get_persistence_summary
+        persistence = get_persistence_summary()
+    except Exception:
+        pass
+
     return JSONResponse({
         "downloader_exists": DOWNLOADER_BIN.exists(),
         "credentials_exist": CREDENTIALS_FILE.exists(),
         "server_installed": SERVER_JAR.exists() and ASSETS_ZIP.exists(),
         "download_running": download_process is not None and download_process.poll() is None,
+        "persistence": persistence,
     })
 
 
