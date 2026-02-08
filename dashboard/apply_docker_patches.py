@@ -396,12 +396,16 @@ async def api_server_action(action: str, user: str = Depends(verify_credentials)
 # [DockerPatch] hard_log_console_overrides
 try:
     # Auto-detect container runtime without forcing developer/native systems.
+    if os.environ.get("HYTALE_DOCKER_MODE", "").lower() in ("1", "true", "yes"):
+        DOCKER_MODE = True
+
     if not DOCKER_MODE:
         _container_markers = [
             "/.dockerenv",
             "/run/.containerenv",
             "/var/run/supervisor.sock",
             "/etc/supervisor/conf.d/supervisord.conf",
+            "/proc/1/cgroup",
         ]
         if any(Path(m).exists() for m in _container_markers):
             DOCKER_MODE = True
@@ -425,6 +429,7 @@ try:
         _docker_get_logs = _dov.get_logs
         _docker_get_console_output = _dov.get_console_output
         _docker_get_server_control_commands = _dov.get_server_control_commands
+        _docker_send_console_command = getattr(_dov, "send_console_command", None)
         _docker_run_backup = _dov.run_backup
         _docker_restore_backup = getattr(_dov, "restore_backup", lambda *args, **kwargs: {"ok": False, "error": "Restore not available"})
         _docker_check_version = getattr(_dov, "check_version", lambda: {"current_version": "unknown", "latest_version": "unknown", "update_available": False, "docker_mode": True, "error": "version check unavailable"})
@@ -519,13 +524,13 @@ try:
             is_allowed, error_msg = should_allow_console_command(command)
             if not is_allowed:
                 raise HTTPException(status_code=400, detail=error_msg)
-            command_file = SERVER_DIR / ".server_command"
-            try:
-                with open(command_file, "a", encoding="utf-8") as f:
-                    f.write(command + "\\n")
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {exc}")
-            return {"ok": True, "command": command}
+
+            if _docker_send_console_command is None:
+                raise HTTPException(status_code=500, detail="Docker console adapter nicht verfuegbar")
+            ok, channel_or_error = _docker_send_console_command(command)
+            if not ok:
+                raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {channel_or_error}")
+            return {"ok": True, "command": command, "channel": channel_or_error}
 
         async def _docker_api_auth_login_start(request: Request, user: str = Depends(verify_credentials)):
             if not ALLOW_CONTROL:

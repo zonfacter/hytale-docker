@@ -132,6 +132,38 @@ def run_cmd(cmd: list[str], timeout: int = 10) -> tuple[str, int]:
         return str(e), 1
 
 
+def send_console_command(command: str) -> tuple[bool, str]:
+    """
+    Send a console command using the best available Docker channel.
+    Preferred channel is .server_command (wrapper polling), with FIFO fallback.
+    """
+    cmd = (command or "").strip()
+    if not cmd:
+        return False, "Kein Befehl angegeben."
+
+    command_file = SERVER_DIR / ".server_command"
+    console_pipe = SERVER_DIR / ".console_pipe"
+
+    try:
+        command_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(command_file, "a", encoding="utf-8") as f:
+            f.write(cmd + "\n")
+        return True, "server_command"
+    except Exception:
+        pass
+
+    # Compatibility fallback for older setups that still use FIFO directly.
+    try:
+        if console_pipe.exists():
+            with open(console_pipe, "w", encoding="utf-8") as f:
+                f.write(cmd + "\n")
+            return True, "console_pipe"
+    except Exception:
+        pass
+
+    return False, f"Kein Command-Channel verfuegbar ({command_file} / {console_pipe})"
+
+
 def get_service_status() -> dict:
     """Query supervisorctl for hytale-server status."""
     cmd = ["supervisorctl", "status", SERVICE_NAME]

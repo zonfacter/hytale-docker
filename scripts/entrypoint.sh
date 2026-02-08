@@ -20,8 +20,30 @@ mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 
 # Universe compatibility symlink for legacy paths (/opt/hytale-server/universe -> /opt/hytale-server/Server/universe)
-if [ ! -e "${HYTALE_DIR}/universe" ]; then
-    ln -s "${HYTALE_DIR}/Server/universe" "${HYTALE_DIR}/universe" 2>/dev/null || true
+# World layout guard: normalize legacy /universe directory handling.
+CANONICAL_UNIVERSE="${HYTALE_DIR}/Server/universe"
+LEGACY_UNIVERSE="${HYTALE_DIR}/universe"
+mkdir -p "${CANONICAL_UNIVERSE}"
+
+if [ -L "${LEGACY_UNIVERSE}" ]; then
+    true
+elif [ -d "${LEGACY_UNIVERSE}" ]; then
+    # If legacy dir exists and canonical is empty, migrate legacy content once.
+    if [ -z "$(ls -A "${CANONICAL_UNIVERSE}" 2>/dev/null || true)" ] && [ -n "$(ls -A "${LEGACY_UNIVERSE}" 2>/dev/null || true)" ]; then
+        echo "[entrypoint] Migrating legacy /universe content into Server/universe"
+        cp -a "${LEGACY_UNIVERSE}/." "${CANONICAL_UNIVERSE}/" 2>/dev/null || true
+    fi
+
+    # Convert empty legacy directory into canonical symlink.
+    if [ -z "$(ls -A "${LEGACY_UNIVERSE}" 2>/dev/null || true)" ]; then
+        rmdir "${LEGACY_UNIVERSE}" 2>/dev/null || true
+        ln -s "${CANONICAL_UNIVERSE}" "${LEGACY_UNIVERSE}" 2>/dev/null || true
+    else
+        echo "[entrypoint] WARNING: Legacy /universe is non-empty and not symlinked"
+        echo "[entrypoint] WARNING: Keeping both paths to avoid data loss; check backup/restore layout"
+    fi
+elif [ ! -e "${LEGACY_UNIVERSE}" ]; then
+    ln -s "${CANONICAL_UNIVERSE}" "${LEGACY_UNIVERSE}" 2>/dev/null || true
 fi
 mkdir -p /var/log/supervisor
 mkdir -p /var/lib/tailscale

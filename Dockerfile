@@ -38,6 +38,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TAILSCALE_HOSTNAME=hytale-server \
     TAILSCALE_ADVERTISE_ROUTES="" \
     # Internal
+    HYTALE_DOCKER_MODE=true \
     PUID=1000 \
     PGID=1000
 

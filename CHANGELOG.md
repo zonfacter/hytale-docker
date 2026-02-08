@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.10.3 - Docker Command Adapter + World Layout Guard
+
+- `feature` Docker Console nutzt jetzt zentralen Command-Adapter (`.server_command` mit FIFO-Fallback) statt harter Pipe-Annahme.
+- `fix` Docker-Mode-Erkennung gehaertet (`HYTALE_DOCKER_MODE=true` + Container-Marker), damit native Script-Pfade im Container nicht aktiv werden.
+- `fix` EntryPoint normalisiert Legacy-`/universe` gegen `Server/universe` und migriert bei Bedarf einmalig, um World-Layout-Konflikte zu reduzieren.
+
 ## [v1.10.2] - 2026-02-08
 
 ### Fixed
