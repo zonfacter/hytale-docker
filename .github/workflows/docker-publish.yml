@@ -24,6 +24,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Run Dashboard compatibility validation
+        run: |
+          chmod +x .github/scripts/validate-dashboard-compat.sh
+          .github/scripts/validate-dashboard-compat.sh
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
