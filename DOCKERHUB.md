@@ -155,6 +155,7 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
+| `1.9.0`, `1.9` | Dashboard updated to `hytale-dashboard v1.5.0` + backup management improvements |
 | `1.8.0`, `1.8` | **BREAKING:** Universe path changed to `Server/universe/` (Hytale 2026.01 compatibility) |
 | `1.7.0`, `1.7` | Tailscale VPN integration |
 | `1.6.0`, `1.6` | Console commands, auth buttons, port display, version detection, persistent auth |
@@ -348,6 +349,7 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
+| `1.9.0`, `1.9` | Dashboard aktualisiert auf `hytale-dashboard v1.5.0` + Verbesserungen in der Backup-Verwaltung |
 | `1.8.0`, `1.8` | **BREAKING:** Universe-Pfad geändert zu `Server/universe/` (Hytale 2026.01 Kompatibilität) |
 | `1.7.0`, `1.7` | Tailscale VPN Integration |
 | `1.6.0`, `1.6` | Konsolen-Befehle, Auth-Buttons, Port-Anzeige, Versions-Erkennung, persistente Auth |

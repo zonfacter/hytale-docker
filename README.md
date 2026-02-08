@@ -398,6 +398,12 @@ environment:
 
 ---
 
+## Release v1.9.0
+
+- Dashboard submodule updated to `hytale-dashboard v1.5.0` (`426d13e`).
+- Backup management enhancements are now available in Docker builds (create/restore actions and seed handling from upstream dashboard).
+- Docker build remains reproducible via pinned submodule commit.
+
 ## Documentation
 
 - 🇩🇪 [Einrichtungsanleitung (Deutsch)](docs/setup-guide-de.md)

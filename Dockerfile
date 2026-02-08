@@ -12,7 +12,7 @@ FROM ${DEBIAN_BASE_IMAGE}
 
 LABEL maintainer="zonfacter"
 LABEL description="Hytale Dedicated Server with Web Dashboard"
-LABEL version="1.8.0"
+LABEL version="1.9.0"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
