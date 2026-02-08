@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.9.1] - 2026-02-08 (Draft)
+
+### Added
+- Smoke-Test Skript `scripts/smoke-test-v1.9.0.sh` fuer schnellen Post-Deploy Check.
+- Draft-Release Paket-Assets (`tar.gz` und `.zip`) fuer direkten Download.
+
+### Documentation
+- README um Download-Hinweis fuer Draft-Release ergaenzt.
+
 ## [v1.9.0] - 2026-02-08
 
 ### Changed

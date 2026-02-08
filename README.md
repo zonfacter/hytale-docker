@@ -404,6 +404,15 @@ environment:
 - Backup management enhancements are now available in Docker builds (create/restore actions and seed handling from upstream dashboard).
 - Docker build remains reproducible via pinned submodule commit.
 
+## Draft Release Download (v1.9.1)
+
+Ein Draft-Release mit Paketdateien wird unter GitHub Releases bereitgestellt.
+Enthaelt:
+- `hytale-docker-v1.9.1-full.tar.gz`
+- `hytale-docker-v1.9.1-full.zip`
+
+Hinweis: Draft-Releases sind nur fuer Repo-Collaborators sichtbar, bis sie veroeffentlicht werden.
+
 ## Documentation
 
 - 🇩🇪 [Einrichtungsanleitung (Deutsch)](docs/setup-guide-de.md)
