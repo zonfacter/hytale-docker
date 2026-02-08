@@ -7,6 +7,9 @@ import os
 import re
 import subprocess
 import json
+import shutil
+import tarfile
+import zipfile
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -293,6 +296,85 @@ def run_backup() -> tuple[str, int]:
         return f"Backup created: {backup_file.name}", 0
     except Exception as e:
         return f"Backup failed: {e}", 1
+
+
+def restore_backup(name: str, backup_type: str = "backup", include_server_state: bool = False) -> dict:
+    """Restore backup data in Docker mode (world restore by default)."""
+    name = (name or "").strip()
+    if not name or Path(name).name != name:
+        return {"ok": False, "error": "Ungueltiger Backup-Name."}
+
+    world_root = SERVER_DIR / "Server" / "universe"
+    world_parent = world_root.parent
+
+    if backup_type == "backup":
+        backup_path = SERVER_DIR / "backups" / name
+        if not backup_path.exists() or not backup_path.is_file():
+            return {"ok": False, "error": "Backup nicht gefunden."}
+        lower = name.lower()
+        if not (lower.endswith('.tar.gz') or lower.endswith('.tgz') or lower.endswith('.zip')):
+            return {"ok": False, "error": "Nur .tar.gz/.tgz/.zip Backups werden unterstuetzt."}
+    elif backup_type == "update-backup":
+        backup_path = SERVER_DIR / name
+        if not name.startswith('.update_backup_'):
+            return {"ok": False, "error": "Ungueltiger Update-Backup Name."}
+        if not backup_path.exists() or not backup_path.is_dir():
+            return {"ok": False, "error": "Update-Backup nicht gefunden."}
+    else:
+        return {"ok": False, "error": "Ungueltiger Backup-Typ."}
+
+    # Stop server before restore
+    run_cmd(["supervisorctl", "stop", SERVICE_NAME], timeout=90)
+
+    try:
+        if world_root.exists():
+            shutil.rmtree(world_root)
+        world_root.mkdir(parents=True, exist_ok=True)
+
+        if backup_type == "backup":
+            if name.lower().endswith('.zip'):
+                with zipfile.ZipFile(backup_path, 'r') as zf:
+                    # Accept archives rooted at universe/ or direct worlds/
+                    members = zf.namelist()
+                    has_universe_root = any(m.startswith('universe/') for m in members)
+                    extract_base = world_parent if has_universe_root else world_root
+                    zf.extractall(path=extract_base)
+            else:
+                with tarfile.open(backup_path, 'r:*') as tf:
+                    members = tf.getmembers()
+                    has_universe_root = any(m.name.startswith('universe/') for m in members)
+                    extract_base = world_parent if has_universe_root else world_root
+                    tf.extractall(path=extract_base)
+        else:
+            # Update backup: restore universe from backup directory if present
+            candidate = backup_path / "Server" / "universe"
+            if not candidate.exists():
+                candidate = backup_path / "universe"
+            if not candidate.exists():
+                return {"ok": False, "error": "Kein universe-Verzeichnis im Update-Backup gefunden."}
+            if world_root.exists():
+                shutil.rmtree(world_root)
+            shutil.copytree(candidate, world_root)
+
+        # Best effort permissions fix
+        run_cmd(["chown", "-R", "hytale:hytale", str(world_root)], timeout=60)
+    except Exception as e:
+        run_cmd(["supervisorctl", "start", SERVICE_NAME], timeout=90)
+        return {"ok": False, "error": f"Restore fehlgeschlagen: {e}"}
+
+    # Start server after restore
+    out, rc = run_cmd(["supervisorctl", "start", SERVICE_NAME], timeout=120)
+    if rc != 0:
+        return {"ok": False, "error": f"Restore abgeschlossen, aber Start fehlgeschlagen: {out}"}
+
+    mode = "full" if include_server_state else "world"
+    return {
+        "ok": True,
+        "backup_type": backup_type,
+        "mode": mode,
+        "message": "Restore erfolgreich.",
+        "output": "Restore abgeschlossen und Server gestartet.",
+    }
 
 
 def check_version() -> dict:

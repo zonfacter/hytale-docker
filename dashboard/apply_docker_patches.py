@@ -426,6 +426,7 @@ try:
         _docker_get_console_output = _dov.get_console_output
         _docker_get_server_control_commands = _dov.get_server_control_commands
         _docker_run_backup = _dov.run_backup
+        _docker_restore_backup = getattr(_dov, "restore_backup", lambda *args, **kwargs: {"ok": False, "error": "Restore not available"})
         _docker_check_version = getattr(_dov, "check_version", lambda: {"current_version": "unknown", "latest_version": "unknown", "update_available": False, "docker_mode": True, "error": "version check unavailable"})
         _docker_run_update = getattr(_dov, "run_update", lambda: {"docker_mode": True, "error": "update unavailable"})
         _docker_get_tailscale_summary = getattr(_dov, "get_tailscale_summary", lambda: {"enabled": False, "connected": False, "backend_state": "unknown", "ip": "", "error": "tailscale summary unavailable"})
@@ -486,6 +487,18 @@ try:
             if rc != 0:
                 raise HTTPException(status_code=500, detail=output)
             return {"ok": True, "output": output}
+
+        async def _docker_api_backup_restore(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+            body = await request.json()
+            name = str(body.get("name", "")).strip()
+            backup_type = str(body.get("backup_type", "backup")).strip()
+            include_server_state = bool(body.get("include_server_state", False))
+            result = _docker_restore_backup(name, backup_type, include_server_state)
+            if not result.get("ok"):
+                raise HTTPException(status_code=500, detail=result.get("error", "Restore fehlgeschlagen."))
+            return JSONResponse(result)
 
         async def _docker_api_version_check(user: str = Depends(verify_credentials)):
             return JSONResponse(_docker_check_version())
@@ -572,6 +585,7 @@ try:
         _replace_route("/api/backup/run", "POST", _docker_api_backup_run)
         _replace_route("/api/backup/create", "POST", _docker_api_backup_create)
         _replace_route("/api/backups/create", "POST", _docker_api_backup_create)
+        _replace_route("/api/backups/restore", "POST", _docker_api_backup_restore)
         _replace_route("/api/config/backup-frequency", "POST", _docker_api_set_backup_frequency)
         _replace_route("/api/console/send", "POST", _docker_api_console_send)
         _replace_route("/api/auth/login/start", "POST", _docker_api_auth_login_start)
@@ -591,7 +605,7 @@ except Exception as e:
         js_marker = "// [DockerPatch] tailscale_status_row"
         if js_marker not in js:
             old_srv_rows = '      kv(el("serverStatus"), [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ]);'
-            new_srv_rows = '      // [DockerPatch] tailscale_status_row\n      const serverRows = [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ];\n      const tailscale = s.tailscale || null;\n      if (tailscale && tailscale.enabled) {\n        const tsState = tailscale.connected ? "verbunden" : (tailscale.backend_state || "nicht verbunden");\n        const tsValue = tailscale.ip ? `${tsState} (${tailscale.ip})` : tsState;\n        serverRows.push(["Tailscale", tsValue]);\n      }\n      const persistence = s.persistence || null;\n      if (persistence) {\n        if (persistence.ok) {\n          serverRows.push(["Persistenz", "OK"]);\n        } else {\n          const warn = (persistence.warnings && persistence.warnings[0]) ? persistence.warnings[0] : "Persistenz unvollstaendig";\n          serverRows.push(["Persistenz", `<span style=\"color: var(--yellow);\">${warn}</span>`]);\n        }\n      }\n      const rel = s.release_updates || null;\n      if (rel) {\n        const relText = `Docker ${rel.github_docker_latest || "?"} | Dashboard ${rel.github_dashboard_latest || "?"} | Hub ${rel.dockerhub_latest || "?"}`;\n        serverRows.push(["Updates", relText]);\n      }\n\n      let banner = document.getElementById("dockerAlertBanner");\n      const main = document.querySelector("main");\n      if (!banner && main) {\n        banner = document.createElement("section");\n        banner.id = "dockerAlertBanner";\n        banner.className = "card global-banner";\n        banner.style.gridColumn = "1 / -1";\n        main.prepend(banner);\n      }\n      if (banner) {\n        const msgs = [];\n        if (persistence && !persistence.ok && persistence.warnings) msgs.push(...persistence.warnings);\n        if (rel) msgs.push(`Latest Releases: Docker ${rel.github_docker_latest || "?"}, Dashboard ${rel.github_dashboard_latest || "?"}, Docker Hub ${rel.dockerhub_latest || "?"}`);\n\n        if (msgs.length) {\n          const warn = !!(persistence && !persistence.ok);\n          banner.style.borderLeft = `4px solid ${warn ? "var(--yellow)" : "var(--accent)"}`;\n          banner.style.background = warn ? "rgba(234,179,8,0.08)" : "rgba(59,130,246,0.08)";\n          banner.style.marginBottom = "4px";\n          banner.innerHTML = `<h2>Hinweise / Notices</h2>${msgs.map(m => `<div style=\"font-size:13px;margin:6px 0;\">${m}</div>`).join("")}`;\n          banner.hidden = false;\n        } else {\n          banner.hidden = true;\n        }\n      }\n\n      kv(el("serverStatus"), serverRows);'
+            new_srv_rows = '      // [DockerPatch] tailscale_status_row\n      const serverRows = [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ];\n      const tailscale = s.tailscale || null;\n      if (tailscale && tailscale.enabled) {\n        const tsState = tailscale.connected ? "verbunden" : (tailscale.backend_state || "nicht verbunden");\n        const tsValue = tailscale.ip ? `${tsState} (${tailscale.ip})` : tsState;\n        serverRows.push(["Tailscale", tsValue]);\n      }\n      const persistence = s.persistence || null;\n      if (persistence) {\n        if (persistence.ok) {\n          serverRows.push(["Persistenz", "OK"]);\n        } else {\n          const warn = (persistence.warnings && persistence.warnings[0]) ? persistence.warnings[0] : "Persistenz unvollstaendig";\n          serverRows.push(["Persistenz", `<span style=\"color: var(--yellow);\">${warn}</span>`]);\n        }\n      }\n      const rel = s.release_updates || null;\n      const hasRelRow = rel && [rel.github_docker_latest, rel.github_dashboard_latest, rel.dockerhub_latest].some(v => v && v !== "unknown");\n      if (hasRelRow) {\n        const relText = `Docker ${rel.github_docker_latest || "?"} | Dashboard ${rel.github_dashboard_latest || "?"} | Hub ${rel.dockerhub_latest || "?"}`;\n        serverRows.push(["Updates", relText]);\n      }\n\n      let banner = document.getElementById("dockerAlertBanner");\n      const main = document.querySelector("main");\n      if (!banner && main) {\n        banner = document.createElement("section");\n        banner.id = "dockerAlertBanner";\n        banner.className = "card global-banner";\n        banner.style.gridColumn = "1 / -1";\n        main.prepend(banner);\n      }\n      if (banner) {\n        const msgs = [];\n        if (persistence && !persistence.ok && persistence.warnings) msgs.push(...persistence.warnings);\n        const hasRel = rel && [rel.github_docker_latest, rel.github_dashboard_latest, rel.dockerhub_latest].some(v => v && v !== "unknown");\n        if (hasRel) msgs.push(`Latest Releases: Docker ${rel.github_docker_latest || "?"}, Dashboard ${rel.github_dashboard_latest || "?"}, Docker Hub ${rel.dockerhub_latest || "?"}`);\n\n        if (msgs.length) {\n          const warn = !!(persistence && !persistence.ok);\n          banner.style.borderLeft = `4px solid ${warn ? "var(--yellow)" : "var(--accent)"}`;\n          banner.style.background = warn ? "rgba(234,179,8,0.08)" : "rgba(59,130,246,0.08)";\n          banner.style.marginBottom = "4px";\n          banner.innerHTML = `<h2>Hinweise / Notices</h2>${msgs.map(m => `<div style=\"font-size:13px;margin:6px 0;\">${m}</div>`).join("")}`;\n          banner.hidden = false;\n        } else {\n          banner.hidden = true;\n        }\n      }\n\n      kv(el("serverStatus"), serverRows);'
             if old_srv_rows in js:
                 js = js.replace(old_srv_rows, new_srv_rows, 1)
                 app_js.write_text(js)

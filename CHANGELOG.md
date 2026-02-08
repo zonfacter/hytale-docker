@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.10.2] - 2026-02-08
+
+### Fixed
+- Backup-Restore ist im Docker-Modus jetzt verfuegbar (`/api/backups/restore`) fuer Backup- und Update-Backup-Quellen.
+- Dashboard-Banner zeigt "Latest Releases" nur noch, wenn Release-Daten verfuegbar sind (kein permanentes `unknown`).
+
 ## [v1.10.1] - 2026-02-08
 
 ### Added
