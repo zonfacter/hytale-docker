@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.9.9] - 2026-02-08
+
+### Added
+- Dashboard-Hinweis fuer Persistenz: zeigt auf der Hauptseite, ob zentrale Docker-Pfade (insb. `/opt/hytale-server/Server`) wirklich persistent gemountet sind.
+- Dashboard-Update-Hinweis auf der Hauptseite mit Latest-Releases von:
+  - `zonfacter/hytale-dashboard` (GitHub)
+  - `zonfacter/hytale-docker` (GitHub)
+  - `zonfacter/hytale-docker` (Docker Hub)
+
+### Fixed
+- Docker-Hinweise werden direkt im `/api/status` Modell bereitgestellt (`persistence`, `release_updates`) und im UI gerendert.
+
 ## [v1.9.8] - 2026-02-08
 
 ### Fixed

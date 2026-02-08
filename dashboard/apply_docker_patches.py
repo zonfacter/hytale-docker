@@ -420,6 +420,8 @@ try:
         _docker_check_version = getattr(_dov, "check_version", lambda: {"current_version": "unknown", "latest_version": "unknown", "update_available": False, "docker_mode": True, "error": "version check unavailable"})
         _docker_run_update = getattr(_dov, "run_update", lambda: {"docker_mode": True, "error": "update unavailable"})
         _docker_get_tailscale_summary = getattr(_dov, "get_tailscale_summary", lambda: {"enabled": False, "connected": False, "backend_state": "unknown", "ip": "", "error": "tailscale summary unavailable"})
+        _docker_get_persistence_summary = getattr(_dov, "get_persistence_summary", lambda: {"ok": True, "mounted": {}, "server_files_present": False, "warnings": []})
+        _docker_get_release_update_info = getattr(_dov, "get_release_update_info", lambda: {"github_dashboard_latest": "unknown", "github_docker_latest": "unknown", "dockerhub_latest": "unknown", "links": {}, "errors": []})
 
         def get_service_status() -> dict:
             return _docker_get_service_status()
@@ -435,6 +437,10 @@ try:
             data = _orig_get_status_data()
             with contextlib.suppress(Exception):
                 data["tailscale"] = _docker_get_tailscale_summary()
+            with contextlib.suppress(Exception):
+                data["persistence"] = _docker_get_persistence_summary()
+            with contextlib.suppress(Exception):
+                data["release_updates"] = _docker_get_release_update_info()
             return data
 
         def _replace_route(path: str, method: str, endpoint):
@@ -576,7 +582,7 @@ except Exception as e:
         js_marker = "// [DockerPatch] tailscale_status_row"
         if js_marker not in js:
             old_srv_rows = '      kv(el("serverStatus"), [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ]);'
-            new_srv_rows = '      // [DockerPatch] tailscale_status_row\n      const serverRows = [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ];\n      const tailscale = s.tailscale || null;\n      if (tailscale && tailscale.enabled) {\n        const tsState = tailscale.connected ? "verbunden" : (tailscale.backend_state || "nicht verbunden");\n        const tsValue = tailscale.ip ? `${tsState} (${tailscale.ip})` : tsState;\n        serverRows.push(["Tailscale", tsValue]);\n      }\n      kv(el("serverStatus"), serverRows);'
+            new_srv_rows = '      // [DockerPatch] tailscale_status_row\n      const serverRows = [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ];\n      const tailscale = s.tailscale || null;\n      if (tailscale && tailscale.enabled) {\n        const tsState = tailscale.connected ? "verbunden" : (tailscale.backend_state || "nicht verbunden");\n        const tsValue = tailscale.ip ? `${tsState} (${tailscale.ip})` : tsState;\n        serverRows.push(["Tailscale", tsValue]);\n      }\n      const persistence = s.persistence || null;\n      if (persistence) {\n        if (persistence.ok) {\n          serverRows.push(["Persistenz", "OK"]);\n        } else {\n          const warn = (persistence.warnings && persistence.warnings[0]) ? persistence.warnings[0] : "Persistenz unvollstaendig";\n          serverRows.push(["Persistenz", `<span style=\"color: var(--yellow);\">${warn}</span>`]);\n        }\n      }\n      const rel = s.release_updates || null;\n      if (rel) {\n        const relText = `Docker ${rel.github_docker_latest || "?"} | Dashboard ${rel.github_dashboard_latest || "?"} | Hub ${rel.dockerhub_latest || "?"}`;\n        serverRows.push(["Updates", relText]);\n      }\n      kv(el("serverStatus"), serverRows);'
             if old_srv_rows in js:
                 js = js.replace(old_srv_rows, new_srv_rows, 1)
                 app_js.write_text(js)

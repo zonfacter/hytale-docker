@@ -7,6 +7,8 @@ import os
 import re
 import subprocess
 import json
+import urllib.request
+import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone
 from threading import Lock
@@ -701,5 +703,97 @@ def get_tailscale_summary() -> dict:
         data["ip"] = ips[0] if ips else ""
     except Exception as e:
         data["error"] = str(e)
+
+    return data
+
+
+def _mount_points() -> set[str]:
+    points = set()
+    try:
+        with open('/proc/self/mountinfo', 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) > 4:
+                    mount_point = parts[4].replace('\040', ' ')
+                    points.add(mount_point)
+    except Exception:
+        pass
+    return points
+
+
+def get_persistence_summary() -> dict:
+    """Check whether critical paths are mounted persistently."""
+    points = _mount_points()
+    checks = {
+        'server_bin': '/opt/hytale-server/Server',
+        'universe': '/opt/hytale-server/Server/universe',
+        'mods': '/opt/hytale-server/mods',
+        'backups': '/opt/hytale-server/backups',
+        'downloader': '/opt/hytale-server/.downloader',
+        'logs': '/opt/hytale-server/logs',
+    }
+
+    mounted = {key: (path in points) for key, path in checks.items()}
+    warnings = []
+
+    if not mounted['server_bin']:
+        warnings.append('`/opt/hytale-server/Server` ist nicht persistent gemountet. Nach Image-Updates kann erneuter Download noetig sein.')
+    if not mounted['universe']:
+        warnings.append('`/opt/hytale-server/Server/universe` ist nicht persistent gemountet. Weltverlust-Risiko!')
+    if not mounted['downloader']:
+        warnings.append('`/opt/hytale-server/.downloader` ist nicht persistent gemountet. Auth-/Downloader-Status kann verloren gehen.')
+
+    server_files_present = (SERVER_DIR / 'Server' / 'HytaleServer.jar').exists() and (SERVER_DIR / 'Assets.zip').exists()
+
+    return {
+        'ok': len(warnings) == 0,
+        'mounted': mounted,
+        'server_files_present': server_files_present,
+        'warnings': warnings,
+    }
+
+
+def _http_json(url: str, timeout: int = 6) -> tuple[dict | None, str | None]:
+    req = urllib.request.Request(url, headers={'User-Agent': 'hytale-docker-dashboard/1.0', 'Accept': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode('utf-8', errors='replace')), None
+    except Exception as e:
+        return None, str(e)
+
+
+def get_release_update_info() -> dict:
+    """Fetch latest release hints from GitHub and Docker Hub."""
+    data = {
+        'github_dashboard_latest': 'unknown',
+        'github_docker_latest': 'unknown',
+        'dockerhub_latest': 'unknown',
+        'links': {
+            'dashboard': 'https://github.com/zonfacter/hytale-dashboard/releases/latest',
+            'docker': 'https://github.com/zonfacter/hytale-docker/releases/latest',
+            'dockerhub': 'https://hub.docker.com/r/zonfacter/hytale-docker/tags',
+        },
+        'errors': [],
+    }
+
+    gh_dash, err = _http_json('https://api.github.com/repos/zonfacter/hytale-dashboard/releases/latest')
+    if gh_dash and isinstance(gh_dash, dict):
+        data['github_dashboard_latest'] = gh_dash.get('tag_name', 'unknown')
+    elif err:
+        data['errors'].append(f'github_dashboard: {err}')
+
+    gh_docker, err = _http_json('https://api.github.com/repos/zonfacter/hytale-docker/releases/latest')
+    if gh_docker and isinstance(gh_docker, dict):
+        data['github_docker_latest'] = gh_docker.get('tag_name', 'unknown')
+    elif err:
+        data['errors'].append(f'github_docker: {err}')
+
+    hub, err = _http_json('https://hub.docker.com/v2/repositories/zonfacter/hytale-docker/tags?page_size=1&ordering=last_updated')
+    if hub and isinstance(hub, dict):
+        results = hub.get('results') or []
+        if results:
+            data['dockerhub_latest'] = results[0].get('name', 'unknown')
+    elif err:
+        data['errors'].append(f'dockerhub: {err}')
 
     return data
