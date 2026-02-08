@@ -28,6 +28,22 @@ fi
 touch "$COMMAND_FILE"
 chmod 660 "$COMMAND_FILE"
 
+AUTH_FILE="${HYTALE_DIR}/auth.enc"
+AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
+LAST_TOKEN_SYNC=0
+
+sync_auth_token() {
+    if [[ -f "$AUTH_FILE" && ! -f "$AUTH_BACKUP" ]]; then
+        cp -f "$AUTH_FILE" "$AUTH_BACKUP" 2>/dev/null || true
+        chown hytale:hytale "$AUTH_BACKUP" 2>/dev/null || true
+        chmod 600 "$AUTH_BACKUP" 2>/dev/null || true
+    elif [[ ! -f "$AUTH_FILE" && -f "$AUTH_BACKUP" ]]; then
+        cp -f "$AUTH_BACKUP" "$AUTH_FILE" 2>/dev/null || true
+        chown hytale:hytale "$AUTH_FILE" 2>/dev/null || true
+        chmod 600 "$AUTH_FILE" 2>/dev/null || true
+    fi
+}
+
 # Function to send command to server
 send_command() {
     if screen -list | grep -q "$SCREEN_NAME"; then
@@ -73,6 +89,11 @@ start_server_screen() {
 
 # Main loop: avoid supervisor FATAL loops when setup is incomplete.
 while true; do
+    now_ts=$(date +%s)
+    if (( now_ts - LAST_TOKEN_SYNC >= 30 )); then
+        sync_auth_token
+        LAST_TOKEN_SYNC=$now_ts
+    fi
     if ! server_files_present; then
         echo "[wrapper] Server files not found. Waiting for setup (Server/HytaleServer.jar + Assets.zip)..."
         sleep "$CHECK_INTERVAL"

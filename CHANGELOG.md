@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.10.1] - 2026-02-08
+
+### Added
+- Farbiger globaler Hinweis-Banner auf der Dashboard-Hauptseite (Warnung bei fehlender Persistenz, Info zu aktuellen Releases).
+- Automatische Token-Synchronisierung im Container:
+  - Restore von `auth.enc` aus `.downloader/auth.enc` beim Start
+  - Laufende Sicherung/Restore im Wrapper während Runtime
+
+### Fixed
+- Banner wird jetzt zuverlässig im Docker-Dashboard gerendert.
+
 ## [v1.10.0] - 2026-02-08
 
 ### Added

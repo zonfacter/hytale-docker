@@ -45,6 +45,27 @@ mkdir -p /var/lib/dbus 2>/dev/null || true
 cp "$PERSISTENT_MACHINE_ID" /var/lib/dbus/machine-id 2>/dev/null || true
 echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
 
+
+# Token persistence sync (auth.enc <-> .downloader/auth.enc)
+AUTH_FILE="${HYTALE_DIR}/auth.enc"
+AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
+if [ ! -f "$AUTH_FILE" ] && [ -f "$AUTH_BACKUP" ]; then
+    echo "[entrypoint] Restoring auth.enc from persistent .downloader"
+    cp -f "$AUTH_BACKUP" "$AUTH_FILE" || true
+fi
+if [ -f "$AUTH_FILE" ] && [ ! -f "$AUTH_BACKUP" ]; then
+    echo "[entrypoint] Saving auth.enc to persistent .downloader"
+    cp -f "$AUTH_FILE" "$AUTH_BACKUP" || true
+fi
+if [ -f "$AUTH_FILE" ]; then
+    chown hytale:hytale "$AUTH_FILE" || true
+    chmod 600 "$AUTH_FILE" || true
+fi
+if [ -f "$AUTH_BACKUP" ]; then
+    chown hytale:hytale "$AUTH_BACKUP" || true
+    chmod 600 "$AUTH_BACKUP" || true
+fi
+
 # Setup Docker socket access for port mapping display
 # The dashboard needs to read the Docker socket to show port mappings
 DOCKER_SOCKET="/var/run/docker.sock"
