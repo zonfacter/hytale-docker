@@ -13,6 +13,7 @@ If the upstream dashboard adds Docker support natively, this patching can be rem
 """
 
 import sys
+import re
 from pathlib import Path
 
 DOCKER_OVERRIDE_IMPORT = """
@@ -118,11 +119,47 @@ def apply_patches(dashboard_dir: Path):
                 content = content.replace(marker, wrapper + marker, 1)
                 break
 
-    # Patch the api_server_action function to use supervisorctl
-    old_allowed = '    allowed = {\n        "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],\n        "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],\n        "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],\n    }'
-    if old_allowed in content:
-        new_allowed = '    if DOCKER_MODE:\n        from docker_overrides import get_server_control_commands\n        allowed = get_server_control_commands()\n    else:\n        allowed = {\n            "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],\n            "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],\n            "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],\n        }'
-        content = content.replace(old_allowed, new_allowed)
+    # Patch the api_server_action function to use supervisorctl in Docker
+    old_server_action_block = """    if DOCKER_MODE and HYTALE_CONTAINER:
+        # Docker mode
+        docker_actions = {
+            "start": ["docker", "start", HYTALE_CONTAINER],
+            "stop": ["docker", "stop", HYTALE_CONTAINER],
+            "restart": ["docker", "restart", HYTALE_CONTAINER],
+        }
+        if action not in docker_actions:
+            raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+        output, rc = run_cmd(docker_actions[action], timeout=60)
+    else:
+        # Native mode with systemctl
+        allowed = {
+            "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],
+            "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],
+            "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],
+        }
+        if action not in allowed:
+            raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+        output, rc = run_cmd(allowed[action], timeout=30)
+"""
+    new_server_action_block = """    if DOCKER_MODE:
+        from docker_overrides import get_server_control_commands
+        allowed = get_server_control_commands()
+        if action not in allowed:
+            raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+        output, rc = run_cmd(allowed[action], timeout=60)
+    else:
+        # Native mode with systemctl
+        allowed = {
+            "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],
+            "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],
+            "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],
+        }
+        if action not in allowed:
+            raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+        output, rc = run_cmd(allowed[action], timeout=30)
+"""
+    if old_server_action_block in content:
+        content = content.replace(old_server_action_block, new_server_action_block, 1)
 
     # Patch check_auto_update function
     old_check_auto = 'def check_auto_update() -> None:\n    """If update-after-backup flag is set and a new backup appeared, trigger update."""'
@@ -298,6 +335,53 @@ def get_cf_api_key_dynamic():
     if old_cf_header in content:
         new_cf_header = '"x-api-key": api_key,'
         content = content.replace(old_cf_header, new_cf_header)
+
+    # Robust patch: api_server_action (upstream signature drift safe)
+    server_action_re = re.compile(
+        r'@app\.post\("/api/server/\{action\}"\)\n'
+        r'async def api_server_action\(action: str, user: str = Depends\(verify_credentials\)\):\n'
+        r'(?:    .*\n)+?'
+        r'    return \{"ok": True, "action": action\}\n',
+        re.MULTILINE,
+    )
+    server_action_repl = """@app.post("/api/server/{action}")
+async def api_server_action(action: str, user: str = Depends(verify_credentials)):
+    if not ALLOW_CONTROL:
+        raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert. ALLOW_CONTROL=true setzen.")
+
+    if DOCKER_MODE:
+        from docker_overrides import get_server_control_commands
+        allowed = get_server_control_commands()
+        timeout = 60
+    else:
+        allowed = {
+            "start": ["sudo", "/bin/systemctl", "start", SERVICE_NAME],
+            "stop": ["sudo", "/bin/systemctl", "stop", SERVICE_NAME],
+            "restart": ["sudo", "/bin/systemctl", "restart", SERVICE_NAME],
+        }
+        timeout = 30
+
+    if action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+
+    output, rc = run_cmd(allowed[action], timeout=timeout)
+    if rc != 0:
+        raise HTTPException(status_code=500, detail=output)
+    return {"ok": True, "action": action}
+"""
+    content, n_server = server_action_re.subn(server_action_repl, content, count=1)
+    if n_server == 0 and 'docker_actions = {' in content:
+        print('[patch] warning: api_server_action robust replacement not applied')
+
+    # Robust patch: reject backup-frequency writes in Docker mode even if old string
+    # signatures changed in upstream.
+    backup_freq_anchor = '@app.post("/api/config/backup-frequency")\nasync def api_set_backup_frequency(request: Request, user: str = Depends(verify_credentials)):\n    if not ALLOW_CONTROL:'
+    if backup_freq_anchor in content:
+        content = content.replace(
+            backup_freq_anchor,
+            '@app.post("/api/config/backup-frequency")\nasync def api_set_backup_frequency(request: Request, user: str = Depends(verify_credentials)):\n    if DOCKER_MODE:\n        raise HTTPException(status_code=400, detail="Backup-Frequenz kann in Docker nicht geaendert werden.")\n    if not ALLOW_CONTROL:',
+            1,
+        )
 
     # ---------------------------------------------------------------------------
     # Hard overrides for current upstream dashboard signatures

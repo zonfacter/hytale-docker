@@ -53,8 +53,12 @@ if [ -S "$DOCKER_SOCKET" ]; then
     fi
     # Add hytale user to docker group
     usermod -aG docker hytale 2>/dev/null || true
-    # Also try to make socket readable (fallback if group doesn't work)
-    chmod 666 "$DOCKER_SOCKET" 2>/dev/null || true
+    # Prefer group-based access, never world-writable socket permissions.
+    chmod g+rw "$DOCKER_SOCKET" 2>/dev/null || true
+    if ! gosu hytale test -r "$DOCKER_SOCKET"; then
+        echo "[entrypoint] WARNING: hytale user has no read access to Docker socket"
+        echo "[entrypoint]          Port mapping display may be unavailable"
+    fi
     echo "[entrypoint] Docker socket access configured (GID: $DOCKER_GID)"
 else
     echo "[entrypoint] Docker socket not mounted (port mapping display disabled)"
