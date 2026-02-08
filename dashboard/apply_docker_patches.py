@@ -387,8 +387,8 @@ async def api_server_action(action: str, user: str = Depends(verify_credentials)
     # Hard overrides for current upstream dashboard signatures
     # ---------------------------------------------------------------------------
     # Newer upstream app.py versions changed function bodies/signatures, so some
-    # string replacements above may not trigger. This fallback ensures Docker log
-    # and console output always use file-based overrides instead of journalctl.
+    # string replacements above may not trigger. This fallback force-replaces
+    # critical Docker routes and runtime helpers.
     hard_override_marker = "# [DockerPatch] hard_log_console_overrides"
     if hard_override_marker not in content:
         content += """
@@ -407,9 +407,16 @@ try:
             DOCKER_MODE = True
 
     if DOCKER_MODE:
+        import contextlib
+        from fastapi import Depends, HTTPException, Request
+        from fastapi.responses import JSONResponse
+        from fastapi.routing import APIRoute
         from docker_overrides import get_service_status as _docker_get_service_status
         from docker_overrides import get_logs as _docker_get_logs
         from docker_overrides import get_console_output as _docker_get_console_output
+        from docker_overrides import get_server_control_commands as _docker_get_server_control_commands
+        from docker_overrides import run_backup as _docker_run_backup
+        from docker_overrides import get_tailscale_summary as _docker_get_tailscale_summary
 
         def get_service_status() -> dict:
             return _docker_get_service_status()
@@ -420,10 +427,138 @@ try:
         def _get_console_output(since: str = "") -> list[str]:
             return _docker_get_console_output(since)
 
-        print("[Dashboard] Applied Docker hard overrides for status/logs/console")
+        _orig_get_status_data = _get_status_data
+        def _get_status_data() -> dict:
+            data = _orig_get_status_data()
+            with contextlib.suppress(Exception):
+                data["tailscale"] = _docker_get_tailscale_summary()
+            return data
+
+        def _replace_route(path: str, method: str, endpoint):
+            method = method.upper()
+            for i in range(len(app.router.routes) - 1, -1, -1):
+                r = app.router.routes[i]
+                if isinstance(r, APIRoute) and r.path == path and method in (r.methods or set()):
+                    app.router.routes.pop(i)
+            app.add_api_route(path, endpoint, methods=[method])
+
+        async def _docker_api_server_action(action: str, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert. ALLOW_CONTROL=true setzen.")
+            allowed = _docker_get_server_control_commands()
+            if action not in allowed:
+                raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action}")
+            output, rc = run_cmd(allowed[action], timeout=60)
+            if rc != 0:
+                raise HTTPException(status_code=500, detail=output)
+            return {"ok": True, "action": action}
+
+        async def _docker_api_backup_run(user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert. ALLOW_CONTROL=true setzen.")
+            output, rc = _docker_run_backup()
+            if rc != 0:
+                raise HTTPException(status_code=500, detail=output)
+            return {"ok": True, "output": output}
+
+        async def _docker_api_set_backup_frequency(request: Request, user: str = Depends(verify_credentials)):
+            raise HTTPException(status_code=400, detail="Backup-Frequenz kann in Docker nicht geaendert werden.")
+
+        async def _docker_api_console_send(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+            body = await request.json()
+            command = str(body.get("command", "")).strip()
+            if not command:
+                raise HTTPException(status_code=400, detail="Kein Befehl angegeben.")
+            is_allowed, error_msg = should_allow_console_command(command)
+            if not is_allowed:
+                raise HTTPException(status_code=400, detail=error_msg)
+            try:
+                send_console_command(command)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=500, detail=str(exc))
+            return {"ok": True, "command": command}
+
+        async def _docker_api_auth_login_start(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+            body = {}
+            with contextlib.suppress(Exception):
+                body = await request.json()
+            method = str(body.get("method", "device")).strip().lower()
+            if method not in ("device", "browser"):
+                method = "device"
+            try:
+                send_console_command("/auth persistence Encrypted")
+                send_console_command(f"/auth login {method}")
+            except RuntimeError as e:
+                raise HTTPException(status_code=500, detail=str(e))
+            return {"ok": True, "message": f"Auth-Login ({method}) mit Persistence gestartet."}
+
+        async def _docker_api_auth_status(user: str = Depends(verify_credentials)):
+            lines = _docker_get_logs()
+            auth_lines = [ln for ln in lines if re.search(r"auth|token|session", ln, re.IGNORECASE)][-60:]
+            lower_lines = [ln.lower() for ln in auth_lines]
+
+            def _last_index(patterns: list[str]) -> int:
+                idx = -1
+                for i, ln in enumerate(lower_lines):
+                    if any(p in ln for p in patterns):
+                        idx = i
+                return idx
+
+            success_idx = _last_index([
+                "starting authenticated flow",
+                "identity token validated",
+                "requesting auth grant",
+                "session service client initialized",
+                "server session token loaded",
+            ])
+            missing_idx = _last_index(["no server tokens configured"])
+            error_idx = _last_index(["session token not available", "server authentication unavailable"])
+            token_file_candidates = [
+                SERVER_DIR / "auth.enc",
+                SERVER_DIR / ".downloader" / "auth.enc",
+            ]
+            token_file_exists = any(p.exists() for p in token_file_candidates)
+            token_configured = token_file_exists or (success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx)
+
+            return JSONResponse({
+                "token_file_exists": token_file_exists,
+                "token_missing": (missing_idx > success_idx) and not token_file_exists,
+                "token_error": (error_idx > success_idx) and not token_file_exists,
+                "token_configured": token_configured,
+                "session_ready": token_configured,
+                "auth_lines": auth_lines,
+            })
+
+        _replace_route("/api/server/{action}", "POST", _docker_api_server_action)
+        _replace_route("/api/backup/run", "POST", _docker_api_backup_run)
+        _replace_route("/api/config/backup-frequency", "POST", _docker_api_set_backup_frequency)
+        _replace_route("/api/console/send", "POST", _docker_api_console_send)
+        _replace_route("/api/auth/login/start", "POST", _docker_api_auth_login_start)
+        _replace_route("/api/auth/status", "GET", _docker_api_auth_status)
+
+        print("[Dashboard] Applied Docker hard overrides for status/logs/console/routes")
 except Exception as e:
     print(f"[Dashboard] Warning: Docker hard overrides not applied: {e}")
 """
+
+    # Patch static app.js to render Tailscale status on dashboard main page.
+    app_js = dashboard_dir / "static" / "app.js"
+    if app_js.exists():
+        js = app_js.read_text()
+        js_marker = "// [DockerPatch] tailscale_status_row"
+        if js_marker not in js:
+            old_srv_rows = '      kv(el("serverStatus"), [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ]);'
+            new_srv_rows = '      // [DockerPatch] tailscale_status_row\n      const serverRows = [\n        ["ActiveState", badge],\n        ["SubState", srv.SubState || "-"],\n        ["MainPID", srv.MainPID || "-"],\n        ["Startzeit", srv.StartTime || "-"],\n      ];\n      const tailscale = s.tailscale || null;\n      if (tailscale && tailscale.enabled) {\n        const tsState = tailscale.connected ? "verbunden" : (tailscale.backend_state || "nicht verbunden");\n        const tsValue = tailscale.ip ? `${tsState} (${tailscale.ip})` : tsState;\n        serverRows.push(["Tailscale", tsValue]);\n      }\n      kv(el("serverStatus"), serverRows);'
+            if old_srv_rows in js:
+                js = js.replace(old_srv_rows, new_srv_rows, 1)
+                app_js.write_text(js)
+                print(f"✓ Patched {app_js} for Tailscale status row")
+            else:
+                print("[patch] warning: could not patch static/app.js server status rows")
 
     # Write the patched content
     app_py.write_text(content)

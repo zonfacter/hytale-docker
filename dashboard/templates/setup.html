@@ -800,29 +800,39 @@
     async function sendAuthCommand(method) {
       const authLog = document.getElementById('auth-log');
       const authStatus = document.getElementById('auth-status');
-      const command = '/auth login ' + method;
+      const persistenceCmd = '/auth persistence Encrypted';
+      const loginCmd = '/auth login ' + method;
 
       authLog.style.display = 'block';
-      authLog.innerHTML = '<span>Sende ' + command + ' ...</span>';
+      authLog.innerHTML = '<span>Sende ' + persistenceCmd + ' und danach ' + loginCmd + ' ...</span>';
       authStatus.innerHTML = '';
 
       try {
-        const resp = await fetch('/api/console/command', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: command })
-        });
-        const data = await resp.json();
+        const sendCmd = async (cmd) => {
+          const resp = await fetch('/api/console/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: cmd })
+          });
+          return await resp.json();
+        };
 
-        if (data.ok) {
-          authStatus.innerHTML = '<span style="color: var(--green);">✓ Befehl gesendet / Command sent</span>';
-          // Wait a moment then refresh the log
+        const persistResult = await sendCmd(persistenceCmd);
+        if (!persistResult.ok) {
+          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (persistResult.error || 'Persistence fehlgeschlagen') + '</span>';
+          return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const loginResult = await sendCmd(loginCmd);
+
+        if (loginResult.ok) {
+          authStatus.innerHTML = '<span style="color: var(--green);">✓ Persistence gesetzt und Login gestartet / Persistence set and login started</span>';
           setTimeout(refreshAuthLog, 2000);
-          // Start polling for log updates
           const pollInterval = setInterval(refreshAuthLog, 3000);
-          setTimeout(() => clearInterval(pollInterval), 60000); // Stop after 1 minute
+          setTimeout(() => clearInterval(pollInterval), 90000);
         } else {
-          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (data.error || 'Fehler') + '</span>';
+          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (loginResult.error || 'Login fehlgeschlagen') + '</span>';
         }
       } catch (e) {
         authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + e.message + '</span>';
@@ -845,12 +855,6 @@
           logContent = logContent.replace(
             /(https:\/\/[^\s]+)/gi,
             '<a href="$1" target="_blank" class="oauth-link" style="color: var(--accent);">$1</a>'
-          );
-
-          // Highlight auth-related messages
-          logContent = logContent.replace(
-            /(auth|login|authenticate|token)/gi,
-            '<strong>$1</strong>'
           );
 
           authLog.innerHTML = logContent;

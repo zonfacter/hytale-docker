@@ -271,7 +271,11 @@ def run_backup() -> tuple[str, int]:
     from datetime import datetime
 
     backup_dir = SERVER_DIR / "backups"
-    universe_dir = SERVER_DIR / "universe"
+    # Hytale 2026.01+ stores world data in Server/universe
+    universe_dir = SERVER_DIR / "Server" / "universe"
+    if not universe_dir.exists():
+        # Backward compatibility for older layouts
+        universe_dir = SERVER_DIR / "universe"
 
     if not universe_dir.exists():
         return "Universe directory not found", 1
@@ -534,7 +538,7 @@ def get_port_mappings() -> dict:
     Tries to read from Docker socket if available.
     """
     import socket
-    import urllib.request
+    import http.client
 
     result = {
         "available": False,
@@ -548,125 +552,154 @@ def get_port_mappings() -> dict:
         "error": None
     }
 
-    # Try to get hostname
     try:
         result["hostname"] = socket.gethostname()
-    except:
+    except Exception:
         pass
 
-    # Try Docker socket
     docker_socket = "/var/run/docker.sock"
-    if os.path.exists(docker_socket):
-        try:
-            # Get container ID from hostname or cgroup
-            container_id = None
-
-            # Method 1: hostname is often the container ID
-            hostname = socket.gethostname()
-            if len(hostname) == 12 and all(c in '0123456789abcdef' for c in hostname.lower()):
-                container_id = hostname
-
-            # Method 2: Read from cgroup (cgroupv1 and cgroupv2)
-            if not container_id:
-                try:
-                    with open("/proc/self/cgroup", "r") as f:
-                        for line in f:
-                            # cgroupv1: contains "docker" in path
-                            if "docker" in line:
-                                parts = line.strip().split("/")
-                                if parts:
-                                    container_id = parts[-1][:12]
-                                    break
-                            # cgroupv2: format is "0::/docker/<container_id>"
-                            if line.startswith("0::"):
-                                parts = line.strip().split("/")
-                                for i, part in enumerate(parts):
-                                    if part == "docker" and i + 1 < len(parts):
-                                        cid = parts[i + 1]
-                                        if len(cid) >= 12 and all(c in '0123456789abcdef' for c in cid[:12].lower()):
-                                            container_id = cid[:12]
-                                            break
-                                if container_id:
-                                    break
-                except:
-                    pass
-
-            # Method 3: Read from cpuset (often works on cgroupv2)
-            if not container_id:
-                try:
-                    with open("/proc/1/cpuset", "r") as f:
-                        content = f.read().strip()
-                        if "/docker/" in content:
-                            parts = content.split("/docker/")
-                            if len(parts) > 1:
-                                cid = parts[-1].split("/")[0]
-                                if len(cid) >= 12:
-                                    container_id = cid[:12]
-                except:
-                    pass
-
-            # Method 4: Read from mountinfo
-            if not container_id:
-                try:
-                    with open("/proc/self/mountinfo", "r") as f:
-                        for line in f:
-                            if "/docker/containers/" in line:
-                                start = line.find("/docker/containers/") + 19
-                                end_part = line[start:start+64]  # Container IDs are 64 chars
-                                container_id = end_part.split("/")[0][:12]
-                                break
-                except:
-                    pass
-
-            # Method 5: Use HOSTNAME environment variable (Docker sets this)
-            if not container_id:
-                hostname_env = os.environ.get("HOSTNAME", "")
-                if len(hostname_env) == 12 and all(c in '0123456789abcdef' for c in hostname_env.lower()):
-                    container_id = hostname_env
-
-            if container_id:
-                # Query Docker API via socket
-                import http.client
-
-                class DockerSocketConnection(http.client.HTTPConnection):
-                    def __init__(self):
-                        super().__init__("localhost")
-
-                    def connect(self):
-                        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                        self.sock.connect(docker_socket)
-
-                conn = DockerSocketConnection()
-                conn.request("GET", f"/containers/{container_id}/json")
-                response = conn.getresponse()
-
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    ports = data.get("NetworkSettings", {}).get("Ports", {})
-
-                    mappings = []
-                    for container_port, host_bindings in ports.items():
-                        if host_bindings:
-                            for binding in host_bindings:
-                                host_port = binding.get("HostPort", "")
-                                host_ip = binding.get("HostIp", "0.0.0.0")
-                                if host_ip == "0.0.0.0":
-                                    host_ip = ""
-                                mappings.append({
-                                    "container": container_port,
-                                    "host": host_port,
-                                    "ip": host_ip
-                                })
-
-                    result["available"] = True
-                    result["mappings"] = mappings
-                    result["container_id"] = container_id
-
-                conn.close()
-
-        except Exception as e:
-            result["error"] = str(e)
-    else:
+    if not os.path.exists(docker_socket):
         result["error"] = "Docker socket not available"
+        return result
+
+    try:
+        def is_hex_prefix(value: str) -> bool:
+            return bool(value) and len(value) >= 12 and all(c in "0123456789abcdef" for c in value[:12].lower())
+
+        def extract_candidates(text: str) -> list[str]:
+            return re.findall(r"\b[a-f0-9]{12,64}\b", text.lower())
+
+        def detect_container_candidates() -> list[str]:
+            candidates = []
+            for candidate in [socket.gethostname(), os.environ.get("HOSTNAME", "")]:
+                if is_hex_prefix(candidate):
+                    candidates.append(candidate)
+
+            for path in ["/proc/self/cgroup", "/proc/1/cgroup", "/proc/1/cpuset", "/proc/self/mountinfo"]:
+                try:
+                    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read().lower()
+                    content = content.replace("docker-", "/").replace(".scope", "/")
+                    candidates.extend(extract_candidates(content))
+                except Exception:
+                    pass
+
+            out = []
+            seen = set()
+            for cid in candidates:
+                key = cid[:64]
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(key)
+            return out
+
+        class DockerSocketConnection(http.client.HTTPConnection):
+            def __init__(self):
+                super().__init__("localhost")
+
+            def connect(self):
+                self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.sock.connect(docker_socket)
+
+        def query_container_json(conn, container_ref: str):
+            conn.request("GET", f"/containers/{container_ref}/json")
+            resp = conn.getresponse()
+            payload = resp.read().decode(errors="replace")
+            if resp.status != 200:
+                return None
+            try:
+                return json.loads(payload)
+            except json.JSONDecodeError:
+                return None
+
+        data = None
+        used_ref = None
+        conn = DockerSocketConnection()
+        try:
+            for ref in detect_container_candidates():
+                data = query_container_json(conn, ref)
+                if data:
+                    used_ref = ref
+                    break
+
+            if not data:
+                conn.request("GET", "/containers/json")
+                resp = conn.getresponse()
+                payload = resp.read().decode(errors="replace")
+                if resp.status == 200:
+                    for item in json.loads(payload):
+                        cid = item.get("Id", "")
+                        if not cid:
+                            continue
+                        names = item.get("Names") or []
+                        if cid.startswith(result["hostname"]) or result["hostname"] in names:
+                            data = query_container_json(conn, cid)
+                            if data:
+                                used_ref = cid
+                                break
+        finally:
+            conn.close()
+
+        if not data:
+            result["error"] = "Container detection via Docker API failed"
+            return result
+
+        ports = data.get("NetworkSettings", {}).get("Ports", {})
+        mappings = []
+        for container_port, host_bindings in ports.items():
+            if host_bindings:
+                for binding in host_bindings:
+                    host_port = binding.get("HostPort", "")
+                    host_ip = binding.get("HostIp", "0.0.0.0")
+                    if host_ip == "0.0.0.0":
+                        host_ip = ""
+                    mappings.append({
+                        "container": container_port,
+                        "host": host_port,
+                        "ip": host_ip,
+                    })
+
+        result["available"] = bool(mappings)
+        result["mappings"] = mappings
+        if used_ref:
+            result["container_id"] = used_ref[:12]
+        if not mappings:
+            result["error"] = "No published ports found for this container"
+
+    except Exception as e:
+        result["error"] = str(e)
 
     return result
+
+
+def get_tailscale_summary() -> dict:
+    """Best-effort Tailscale status for dashboard summary cards."""
+    enabled = os.environ.get("TAILSCALE_ENABLED", "false").lower() == "true"
+    data = {
+        "enabled": enabled,
+        "connected": False,
+        "backend_state": "disabled" if not enabled else "unknown",
+        "ip": "",
+        "error": None,
+    }
+    if not enabled:
+        return data
+
+    output, returncode = run_cmd(["tailscale", "status", "--json"], timeout=8)
+    if returncode != 0:
+        data["error"] = output
+        return data
+
+    try:
+        status_data = json.loads(output)
+        backend_state = status_data.get("BackendState", "")
+        self_info = status_data.get("Self", {})
+        ips = self_info.get("TailscaleIPs", []) or []
+        data["backend_state"] = backend_state or "unknown"
+        data["connected"] = backend_state.lower() == "running" and bool(ips)
+        data["ip"] = ips[0] if ips else ""
+    except Exception as e:
+        data["error"] = str(e)
+
+    return data

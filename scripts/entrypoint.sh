@@ -45,21 +45,29 @@ echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
 DOCKER_SOCKET="/var/run/docker.sock"
 if [ -S "$DOCKER_SOCKET" ]; then
     echo "[entrypoint] Docker socket detected, configuring access..."
-    # Get the group ID of the docker socket
     DOCKER_GID=$(stat -c '%g' "$DOCKER_SOCKET")
-    # Create docker group with that GID if it doesn't exist
-    if ! getent group docker > /dev/null 2>&1; then
-        groupadd -g "$DOCKER_GID" docker 2>/dev/null || true
+
+    # Reuse an existing group with that GID, or create a dedicated one.
+    DOCKER_GROUP_NAME=$(getent group "$DOCKER_GID" | cut -d: -f1 || true)
+    if [ -z "$DOCKER_GROUP_NAME" ]; then
+        DOCKER_GROUP_NAME="docker-host"
+        if ! getent group "$DOCKER_GROUP_NAME" > /dev/null 2>&1; then
+            groupadd -g "$DOCKER_GID" "$DOCKER_GROUP_NAME" 2>/dev/null || true
+        fi
     fi
-    # Add hytale user to docker group
-    usermod -aG docker hytale 2>/dev/null || true
+
+    if [ -n "$DOCKER_GROUP_NAME" ]; then
+        usermod -aG "$DOCKER_GROUP_NAME" hytale 2>/dev/null || true
+    fi
+
     # Prefer group-based access, never world-writable socket permissions.
     chmod g+rw "$DOCKER_SOCKET" 2>/dev/null || true
+
     if ! gosu hytale test -r "$DOCKER_SOCKET"; then
         echo "[entrypoint] WARNING: hytale user has no read access to Docker socket"
         echo "[entrypoint]          Port mapping display may be unavailable"
     fi
-    echo "[entrypoint] Docker socket access configured (GID: $DOCKER_GID)"
+    echo "[entrypoint] Docker socket access configured (GID: $DOCKER_GID, group: ${DOCKER_GROUP_NAME:-unknown})"
 else
     echo "[entrypoint] Docker socket not mounted (port mapping display disabled)"
 fi

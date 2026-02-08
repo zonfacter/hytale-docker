@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.9.6] - 2026-02-08
+
+### Fixed
+- Docker Manage-Console nutzt jetzt robust den Wrapper-Command-Pfad statt alter FIFO-Abhaengigkeit (`/api/console/send`), auch bei Upstream-Signatur-Aenderungen.
+- Setup-Auth fuehrt automatisch `/auth persistence Encrypted` vor `/auth login {device|browser}` aus.
+- OAuth/HTTP-Links im Setup-Log bleiben klickbar (kein fehlerhaftes HTML-Rewriting mehr).
+- Port-Mapping-Erkennung per Docker-Socket wurde fuer cgroupv1/v2/systemd-Scope robuster gemacht.
+- Docker Socket Gruppen-Mapping im EntryPoint auf GID-basierten Zugriff gehaertet.
+
+### Added
+- Tailscale-Status wird im Dashboard-Statusmodell bereitgestellt und auf der Hauptseite als Status-Zeile angezeigt.
+
 ## [v1.9.5] - 2026-02-08
 
 ### Fixed
