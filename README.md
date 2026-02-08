@@ -292,6 +292,7 @@ Data is stored in Docker-managed named volumes by default (recommended for produ
 
 | Volume Name | Container Path | Description |
 |-------------|----------------|-------------|
+| `hytale-server-bin` | `/opt/hytale-server/Server` | Server binaries/runtime (prevents re-download after updates) |
 | `hytale-universe` | `/opt/hytale-server/Server/universe` | World data (players, builds) |
 | `hytale-mods` | `/opt/hytale-server/mods` | Installed mods |
 | `hytale-backups` | `/opt/hytale-server/backups` | Backup files |
@@ -299,6 +300,8 @@ Data is stored in Docker-managed named volumes by default (recommended for produ
 | `hytale-logs` | `/opt/hytale-server/logs` | Server logs |
 
 > **Note:** Since Hytale Server 2026.01, world data is stored in `Server/universe/` instead of `universe/`. If upgrading from an older version, see [Migration Guide](#migration-from-v17-or-earlier).
+
+> **Important:** Persist `/opt/hytale-server/Server` as well, otherwise server binaries may be lost after image updates and setup/download must run again.
 
 ### Volume Configuration Options
 

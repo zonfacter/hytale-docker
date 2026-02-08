@@ -106,6 +106,9 @@ services:
     # Using named volumes (recommended for production and portability)
     # Note: Universe path changed in Hytale Server 2026.01+ to Server/universe/
     volumes:
+      # Server binaries and runtime files (prevents re-download after image updates)
+      - hytale-server-bin:/opt/hytale-server/Server
+
       # Game world data (players, buildings, etc.)
       - hytale-universe:/opt/hytale-server/Server/universe
 
@@ -171,6 +174,8 @@ services:
 # Named Volumes Definition
 #===============================================================================
 volumes:
+  hytale-server-bin:
+    driver: local
   hytale-universe:
     driver: local
   hytale-mods:

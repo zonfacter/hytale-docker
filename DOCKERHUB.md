@@ -113,6 +113,7 @@ Example output:
 
 | Path | Description |
 |------|-------------|
+| `/opt/hytale-server/Server` | Server binaries/runtime (prevent re-download after updates) |
 | `/opt/hytale-server/Server/universe` | World data (players, builds) - **NEW in v1.8.0** |
 | `/opt/hytale-server/mods` | Installed mods |
 | `/opt/hytale-server/backups` | Backup files |
@@ -138,6 +139,8 @@ services:
       - CF_API_KEY=your-curseforge-key
       - TZ=Europe/Berlin
     volumes:
+      # Persist Server binaries/runtime to avoid re-download on image updates
+      - ./data/server:/opt/hytale-server/Server
       # Note: Universe path changed in v1.8.0 to Server/universe/
       - ./data/universe:/opt/hytale-server/Server/universe
       - ./data/mods:/opt/hytale-server/mods

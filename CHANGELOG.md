@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.9.5] - 2026-02-08
+
+### Fixed
+- Docker updates no longer require re-downloading server binaries when recommended volumes are used.
+- `server-wrapper.sh` now waits gracefully for setup files instead of exiting quickly and causing supervisor `FATAL` loops.
+
+### Changed
+- Added persistent `hytale-server-bin` volume mapping (`/opt/hytale-server/Server`) in compose defaults.
+- Updated README and Docker Hub docs with persistent binary volume guidance.
+
 ## [v1.9.4] - 2026-02-08
 
 ### Fixed
