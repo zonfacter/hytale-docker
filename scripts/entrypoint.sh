@@ -18,6 +18,11 @@ mkdir -p ${HYTALE_DIR}/logs
 mkdir -p ${HYTALE_DIR}/mods
 mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
+
+# Universe compatibility symlink for legacy paths (/opt/hytale-server/universe -> /opt/hytale-server/Server/universe)
+if [ ! -e "${HYTALE_DIR}/universe" ]; then
+    ln -s "${HYTALE_DIR}/Server/universe" "${HYTALE_DIR}/universe" 2>/dev/null || true
+fi
 mkdir -p /var/log/supervisor
 mkdir -p /var/lib/tailscale
 chmod 700 /var/lib/tailscale

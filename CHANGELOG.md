@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.10.0] - 2026-02-08
+
+### Added
+- Hinweise zu Persistenz und Releases auf der Dashboard-Hauptseite als Statuszeilen (GitHub + Docker Hub).
+
+### Fixed
+- Docker-Pfad-Kompatibilitaet fuer Weltkonfiguration verbessert: im Docker-Modus wird `Server/universe/...` bevorzugt.
+- Legacy-Kompatibilitaet: `entrypoint.sh` legt bei Bedarf Symlink `/opt/hytale-server/universe -> /opt/hytale-server/Server/universe` an.
+
 ## [v1.9.9] - 2026-02-08
 
 ### Added

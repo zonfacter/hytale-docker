@@ -408,6 +408,15 @@ try:
 
     if DOCKER_MODE:
         import contextlib
+        # Prefer Hytale 2026.01+ world config path in Docker (Server/universe).
+        _new_world_cfg = SERVER_DIR / "Server" / "universe" / "worlds" / "default" / "config.json"
+        _old_world_cfg = SERVER_DIR / "universe" / "worlds" / "default" / "config.json"
+        if _new_world_cfg.exists():
+            WORLD_CONFIG_FILE = _new_world_cfg
+        elif _old_world_cfg.exists():
+            WORLD_CONFIG_FILE = _old_world_cfg
+        else:
+            WORLD_CONFIG_FILE = _new_world_cfg
         from fastapi import Depends, HTTPException, Request
         from fastapi.responses import JSONResponse
         from fastapi.routing import APIRoute
