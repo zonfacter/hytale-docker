@@ -555,25 +555,39 @@ def get_console_output(since: str = "") -> list[str]:
     log_file = LOG_DIR / "server.log"
     lines = []
 
-    if not log_file.exists():
-        return ["[Log file not found - server may not have started yet]"]
+    def _tail_file(path: Path, count: int = 200) -> list[str]:
+        if not path.exists():
+            return []
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                all_lines = f.readlines()
+            return [strip_ansi(line.rstrip()) for line in all_lines[-count:] if line.strip()]
+        except (PermissionError, OSError):
+            return []
 
-    try:
-        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-            all_lines = f.readlines()
-            cleaned = [strip_ansi(line.rstrip()) for line in all_lines if line.strip()]
+    def _tail_supervisor(stream: str = "stdout", count: int = 200) -> list[str]:
+        output, rc = run_cmd(["supervisorctl", "tail", f"-{count}", SERVICE_NAME, stream], timeout=8)
+        if rc != 0 or not output:
+            return []
+        return [strip_ansi(line.rstrip()) for line in output.splitlines() if line.strip()]
 
-            # Filter historical wrapper spam so current runtime logs stay visible.
-            spam_pattern = "bash: line 1: ./start.sh: Permission denied"
-            spam_count = sum(1 for ln in cleaned if spam_pattern in ln)
-            filtered = [ln for ln in cleaned if spam_pattern not in ln]
-            if spam_count:
-                filtered.append(f"[Filtered {spam_count} historical start.sh permission errors]")
+    file_lines = _tail_file(log_file, 220)
+    super_lines = _tail_supervisor("stdout", 220)
+    super_err = _tail_supervisor("stderr", 80)
 
-            # Return recent lines after filtering.
-            lines = filtered[-80:]
-    except (PermissionError, OSError) as e:
-        lines = [f"[Error reading log: {e}]"]
+    # Prefer whichever source currently has activity; merge with de-duplication.
+    merged = []
+    seen = set()
+    for line in (file_lines + super_lines + super_err):
+        if line in seen:
+            continue
+        seen.add(line)
+        merged.append(line)
+
+    if not merged:
+        return ["[No console output available yet]"]
+
+    lines = merged[-120:]
 
     return lines
 
