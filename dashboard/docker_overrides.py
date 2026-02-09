@@ -550,20 +550,11 @@ def get_players_from_logs() -> list[dict]:
 
 def get_console_output(since: str = "") -> list[str]:
     """
-    Get console output from log file instead of journalctl.
+    Get console output from active Docker log files.
+    Prefer the most recently updated source (wrapper.log/server.log),
+    with supervisor tail as fallback.
     """
-    log_file = LOG_DIR / "server.log"
     lines = []
-
-    def _tail_file(path: Path, count: int = 200) -> list[str]:
-        if not path.exists():
-            return []
-        try:
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                all_lines = f.readlines()
-            return [strip_ansi(line.rstrip()) for line in all_lines[-count:] if line.strip()]
-        except (PermissionError, OSError):
-            return []
 
     def _tail_supervisor(stream: str = "stdout", count: int = 200) -> list[str]:
         output, rc = run_cmd(["supervisorctl", "tail", f"-{count}", SERVICE_NAME, stream], timeout=8)
@@ -571,23 +562,39 @@ def get_console_output(since: str = "") -> list[str]:
             return []
         return [strip_ansi(line.rstrip()) for line in output.splitlines() if line.strip()]
 
-    file_lines = _tail_file(log_file, 220)
-    super_lines = _tail_supervisor("stdout", 220)
-    super_err = _tail_supervisor("stderr", 80)
+    def _tail_file(path: Path, count: int = 220) -> list[str]:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                raw = f.readlines()
+            return [strip_ansi(line.rstrip()) for line in raw[-count:] if line.strip()]
+        except (PermissionError, OSError):
+            return []
 
-    # Prefer whichever source currently has activity; merge with de-duplication.
-    merged = []
-    seen = set()
-    for line in (file_lines + super_lines + super_err):
-        if line in seen:
-            continue
-        seen.add(line)
-        merged.append(line)
+    # Determine active log source by most recent modification time.
+    sources = [LOG_DIR / "wrapper.log", LOG_DIR / "server.log"]
+    existing_sources = [p for p in sources if p.exists()]
+    existing_sources.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
 
-    if not merged:
+    if existing_sources:
+        primary = existing_sources[0]
+        secondary = existing_sources[1] if len(existing_sources) > 1 else None
+        primary_lines = _tail_file(primary, 220)
+        secondary_lines = _tail_file(secondary, 120) if secondary else []
+
+        # If primary log is sparse, enrich with secondary source.
+        if len(primary_lines) < 30 and secondary_lines:
+            lines = (secondary_lines + primary_lines)[-120:]
+        else:
+            lines = primary_lines[-120:]
+
+    # Supervisor fallback when file logs are empty/unavailable.
+    if not lines:
+        super_lines = _tail_supervisor("stdout", 220)
+        super_err = _tail_supervisor("stderr", 120)
+        lines = (super_lines + super_err)[-120:]
+
+    if not lines:
         return ["[No console output available yet]"]
-
-    lines = merged[-120:]
 
     return lines
 
