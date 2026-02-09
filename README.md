@@ -490,6 +490,15 @@ The downloader is fetched automatically from `https://downloader.hytale.com/hyta
 - Click "Refresh Log" in the setup wizard
 - Check if downloader file exists (see "Downloader not found" above)
 
+### Token restore says OK, but players are still rejected
+- Symptom in server log: `Server session token not available` or `/auth status` shows `Token Source: Not authenticated`.
+- Cause: `auth.enc` can be runtime-bound (for example after container rebuild/reinstall with different machine identity).
+- Important: File restore can be technically correct, but runtime authentication can still be invalid.
+- Recommended fix:
+  1. Run `/auth login device` (or browser login) again.
+  2. Run `/auth persistence Encrypted`.
+  3. Create a fresh token backup and use that backup for future restores.
+
 ### Server won't start
 - Check logs: `docker-compose logs hytale`
 - Ensure enough memory is available

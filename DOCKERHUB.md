@@ -265,6 +265,14 @@ Dann öffne `http://localhost:8088/setup` im Browser.
    - Der Server startet automatisch
    - Dashboard erreichbar unter `http://localhost:8088`
 
+### Hinweis zu Token-Backup/Restore
+
+- Ein wiederhergestelltes `auth.enc` kann je nach Runtime-Umgebung ungueltig sein (z. B. nach Neuaufsetzen/Rebuild).
+- Wenn Spieler trotz vorhandenem Token abgewiesen werden (`Server session token not available`):
+  1. ` /auth login device` erneut ausfuehren
+  2. ` /auth persistence Encrypted` setzen
+  3. neues Token-Backup erstellen
+
 ## Umgebungsvariablen
 
 | Variable | Standard | Beschreibung |

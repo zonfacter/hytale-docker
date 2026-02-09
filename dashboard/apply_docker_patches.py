@@ -574,23 +574,33 @@ try:
                 "requesting auth grant",
                 "session service client initialized",
                 "server session token loaded",
+                "authentication successful",
             ])
-            missing_idx = _last_index(["no server tokens configured"])
-            error_idx = _last_index(["session token not available", "server authentication unavailable"])
+            missing_idx = _last_index([
+                "no server tokens configured",
+                "token source: not authenticated",
+                "session token: missing",
+            ])
+            error_idx = _last_index([
+                "session token not available",
+                "server authentication unavailable",
+            ])
             token_file_candidates = [
                 SERVER_DIR / "auth.enc",
                 SERVER_DIR / "Server" / "auth.enc",
                 SERVER_DIR / ".downloader" / "auth.enc",
             ]
             token_file_exists = any(p.exists() for p in token_file_candidates)
-            token_configured = token_file_exists or (success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx)
+            has_runtime_session = success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx
+            token_configured = token_file_exists
+            session_ready = has_runtime_session
 
             return JSONResponse({
                 "token_file_exists": token_file_exists,
-                "token_missing": (missing_idx > success_idx) and not token_file_exists,
-                "token_error": (error_idx > success_idx) and not token_file_exists,
+                "token_missing": (missing_idx > success_idx) and not has_runtime_session,
+                "token_error": (error_idx > success_idx) and not has_runtime_session,
                 "token_configured": token_configured,
-                "session_ready": token_configured,
+                "session_ready": session_ready,
                 "auth_lines": auth_lines,
             })
 
