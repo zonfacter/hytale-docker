@@ -9,6 +9,7 @@ set -euo pipefail
 HYTALE_DIR="${HYTALE_DIR:-/opt/hytale-server}"
 SCREEN_NAME="hytale"
 COMMAND_FILE="${HYTALE_DIR}/.server_command"
+CONSOLE_PIPE="${HYTALE_DIR}/.console_pipe"
 CHECK_INTERVAL="${HYTALE_SETUP_WAIT_SECONDS:-5}"
 
 cd "$HYTALE_DIR"
@@ -46,19 +47,32 @@ sync_auth_token() {
 
 # Function to send command to server
 send_command() {
+    if [ -p "$CONSOLE_PIPE" ]; then
+        printf '%s\n' "$1" > "$CONSOLE_PIPE"
+        echo "[wrapper] Sent command via pipe: $1"
+        return 0
+    fi
+
+    # Fallback for legacy sessions where pipe is unavailable.
     if screen -list | grep -q "$SCREEN_NAME"; then
         screen -S "$SCREEN_NAME" -p 0 -X stuff "$1\n"
-        echo "[wrapper] Sent command: $1"
-    else
-        echo "[wrapper] Server not running"
+        echo "[wrapper] Sent command via screen: $1"
+        return 0
     fi
+
+    echo "[wrapper] Server not running"
+    return 1
 }
 
 # Cleanup function
 cleanup() {
     echo "[wrapper] Shutting down server..."
     if screen -list | grep -q "$SCREEN_NAME"; then
-        screen -S "$SCREEN_NAME" -p 0 -X stuff "/stop\n"
+        if [ -p "$CONSOLE_PIPE" ]; then
+            printf '%s\n' "/stop" > "$CONSOLE_PIPE" || true
+        else
+            screen -S "$SCREEN_NAME" -p 0 -X stuff "/stop\n"
+        fi
         sleep 5
         screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
     fi
