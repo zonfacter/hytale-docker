@@ -634,6 +634,67 @@ except Exception as e:
     print(f"[Dashboard] Warning: Docker hard overrides not applied: {e}")
 """
 
+    # Ensure auth status override stays up-to-date even if the hard override block
+    # already exists in app.py from a previous patch run.
+    auth_status_re = re.compile(
+        r'async def _docker_api_auth_status\(user: str = Depends\(verify_credentials\)\):\n'
+        r'(?:    .*\n)+?'
+        r'            "auth_lines": auth_lines,\n'
+        r'        \}\)\n',
+        re.MULTILINE,
+    )
+    auth_status_repl = '''async def _docker_api_auth_status(user: str = Depends(verify_credentials)):
+            lines = _docker_get_logs()
+            auth_lines = [ln for ln in lines if re.search(r"auth|token|session", ln, re.IGNORECASE)][-60:]
+            lower_lines = [ln.lower() for ln in auth_lines]
+
+            def _last_index(patterns: list[str]) -> int:
+                idx = -1
+                for i, ln in enumerate(lower_lines):
+                    if any(p in ln for p in patterns):
+                        idx = i
+                return idx
+
+            success_idx = _last_index([
+                "starting authenticated flow",
+                "identity token validated",
+                "requesting auth grant",
+                "session service client initialized",
+                "server session token loaded",
+                "authentication successful",
+            ])
+            missing_idx = _last_index([
+                "no server tokens configured",
+                "token source: not authenticated",
+                "session token: missing",
+            ])
+            error_idx = _last_index([
+                "session token not available",
+                "server authentication unavailable",
+            ])
+            token_file_candidates = [
+                SERVER_DIR / "auth.enc",
+                SERVER_DIR / "Server" / "auth.enc",
+                SERVER_DIR / ".downloader" / "auth.enc",
+            ]
+            token_file_exists = any(p.exists() for p in token_file_candidates)
+            has_runtime_session = success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx
+            token_configured = token_file_exists
+            session_ready = has_runtime_session
+
+            return JSONResponse({
+                "token_file_exists": token_file_exists,
+                "token_missing": (missing_idx > success_idx) and not has_runtime_session,
+                "token_error": (error_idx > success_idx) and not has_runtime_session,
+                "token_configured": token_configured,
+                "session_ready": session_ready,
+                "auth_lines": auth_lines,
+            })
+'''
+    content, n_auth = auth_status_re.subn(auth_status_repl, content, count=1)
+    if n_auth == 0:
+        print("[patch] warning: _docker_api_auth_status replacement not applied")
+
     # Patch static app.js to render Tailscale status on dashboard main page.
     app_js = dashboard_dir / "static" / "app.js"
     if app_js.exists():
