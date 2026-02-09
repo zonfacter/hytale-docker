@@ -104,9 +104,10 @@ COPY --chown=root:root scripts/download-server.sh /usr/local/bin/hytale-download
 COPY --chown=root:root scripts/fetch-downloader.sh /usr/local/bin/hytale-fetch-downloader.sh
 COPY --chown=root:root scripts/server-wrapper.sh /usr/local/bin/hytale-server-wrapper.sh
 COPY --chown=root:root scripts/tailscale-connect.sh /usr/local/bin/tailscale-connect.sh
+COPY --chown=root:root scripts/hytale-token.sh /usr/local/sbin/hytale-token.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/tailscale-connect.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html
