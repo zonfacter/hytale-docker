@@ -142,7 +142,7 @@ VOLUME ["${HYTALE_DIR}/Server/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/ba
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${DASHBOARD_PORT}/api/status || exit 1
+    CMD curl -f http://localhost:${DASHBOARD_PORT}/api/setup/status || exit 1
 
 WORKDIR ${HYTALE_DIR}
 ENTRYPOINT ["/entrypoint.sh"]

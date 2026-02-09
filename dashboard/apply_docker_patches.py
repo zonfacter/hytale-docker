@@ -303,6 +303,13 @@ async def api_console_send(request: Request, user: str = Depends(verify_credenti
     if not CONSOLE_PIPE.exists():'''
         content = content.replace(old_console_send, new_console_send)
 
+    # Patch token restore to allow restore in Docker mode
+    old_token_restore_guard = '''    if DOCKER_MODE:
+        raise HTTPException(status_code=400, detail="Token-Restore wird im Docker-Modus aktuell nicht unterstuetzt.")
+'''
+    if old_token_restore_guard in content:
+        content = content.replace(old_token_restore_guard, "")
+
     # Patch CF_API_KEY to use config file in Docker mode
     old_cf_key = 'CF_API_KEY = os.environ.get("CF_API_KEY", "")'
     if old_cf_key in content:
@@ -587,6 +594,18 @@ try:
                 "auth_lines": auth_lines,
             })
 
+        async def _docker_api_token_restore(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+            body = await request.json()
+            name = str(body.get("name", "")).strip()
+            if not name or Path(name).name != name or not name.endswith(".enc"):
+                raise HTTPException(status_code=400, detail="Ungueltiger Token-Backup Name.")
+            output, rc = run_cmd(with_optional_sudo([TOKEN_SCRIPT, "restore", name]), timeout=180)
+            if rc != 0:
+                raise HTTPException(status_code=500, detail=output or "Token-Restore fehlgeschlagen.")
+            return {"ok": True, "message": "Token wiederhergestellt und Server neu gestartet.", "output": output}
+
         _replace_route("/api/server/{action}", "POST", _docker_api_server_action)
         _replace_route("/api/backup/run", "POST", _docker_api_backup_run)
         _replace_route("/api/backup/create", "POST", _docker_api_backup_create)
@@ -596,6 +615,7 @@ try:
         _replace_route("/api/console/send", "POST", _docker_api_console_send)
         _replace_route("/api/auth/login/start", "POST", _docker_api_auth_login_start)
         _replace_route("/api/auth/status", "GET", _docker_api_auth_status)
+        _replace_route("/api/token/restore", "POST", _docker_api_token_restore)
         _replace_route("/api/version/check", "POST", _docker_api_version_check)
         _replace_route("/api/update/run", "POST", _docker_api_update_run)
 
