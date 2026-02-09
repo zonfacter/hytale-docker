@@ -561,8 +561,17 @@ def get_console_output(since: str = "") -> list[str]:
     try:
         with open(log_file, "r", encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
-            # Return last 50 lines, strip ANSI codes
-            lines = [strip_ansi(line.rstrip()) for line in all_lines[-50:]]
+            cleaned = [strip_ansi(line.rstrip()) for line in all_lines if line.strip()]
+
+            # Filter historical wrapper spam so current runtime logs stay visible.
+            spam_pattern = "bash: line 1: ./start.sh: Permission denied"
+            spam_count = sum(1 for ln in cleaned if spam_pattern in ln)
+            filtered = [ln for ln in cleaned if spam_pattern not in ln]
+            if spam_count:
+                filtered.append(f"[Filtered {spam_count} historical start.sh permission errors]")
+
+            # Return recent lines after filtering.
+            lines = filtered[-80:]
     except (PermissionError, OSError) as e:
         lines = [f"[Error reading log: {e}]"]
 
