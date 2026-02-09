@@ -121,6 +121,17 @@ if [ -f "Server/HytaleServer.jar" ] && [ -f "Assets.zip" ]; then
         log "✓ start.sh ausführbar gemacht / start.sh made executable"
     fi
 
+    # Cache server files for fast recovery when /Server mount is missing.
+    CACHE_ARCHIVE="$EXTRACT_PATH/.downloader/server-files-cache.tar.gz"
+    log "Creating persistent server cache snapshot..."
+    if tar -czf "$CACHE_ARCHIVE.tmp" -C "$EXTRACT_PATH" Server Assets.zip 2>/dev/null; then
+        mv -f "$CACHE_ARCHIVE.tmp" "$CACHE_ARCHIVE"
+        log "✓ Server cache updated: $CACHE_ARCHIVE"
+    else
+        rm -f "$CACHE_ARCHIVE.tmp" 2>/dev/null || true
+        log "⚠ Could not update server cache snapshot"
+    fi
+
     # Save installed version
     if [ "$LATEST_VERSION" != "unknown" ]; then
         echo "$LATEST_VERSION" > "$EXTRACT_PATH/last_version.txt"

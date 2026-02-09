@@ -20,8 +20,30 @@ mkdir -p ${HYTALE_DIR}/backups
 mkdir -p ${HYTALE_DIR}/.downloader
 
 # Universe compatibility symlink for legacy paths (/opt/hytale-server/universe -> /opt/hytale-server/Server/universe)
-if [ ! -e "${HYTALE_DIR}/universe" ]; then
-    ln -s "${HYTALE_DIR}/Server/universe" "${HYTALE_DIR}/universe" 2>/dev/null || true
+# World layout guard: normalize legacy /universe directory handling.
+CANONICAL_UNIVERSE="${HYTALE_DIR}/Server/universe"
+LEGACY_UNIVERSE="${HYTALE_DIR}/universe"
+mkdir -p "${CANONICAL_UNIVERSE}"
+
+if [ -L "${LEGACY_UNIVERSE}" ]; then
+    true
+elif [ -d "${LEGACY_UNIVERSE}" ]; then
+    # If legacy dir exists and canonical is empty, migrate legacy content once.
+    if [ -z "$(ls -A "${CANONICAL_UNIVERSE}" 2>/dev/null || true)" ] && [ -n "$(ls -A "${LEGACY_UNIVERSE}" 2>/dev/null || true)" ]; then
+        echo "[entrypoint] Migrating legacy /universe content into Server/universe"
+        cp -a "${LEGACY_UNIVERSE}/." "${CANONICAL_UNIVERSE}/" 2>/dev/null || true
+    fi
+
+    # Convert empty legacy directory into canonical symlink.
+    if [ -z "$(ls -A "${LEGACY_UNIVERSE}" 2>/dev/null || true)" ]; then
+        rmdir "${LEGACY_UNIVERSE}" 2>/dev/null || true
+        ln -s "${CANONICAL_UNIVERSE}" "${LEGACY_UNIVERSE}" 2>/dev/null || true
+    else
+        echo "[entrypoint] WARNING: Legacy /universe is non-empty and not symlinked"
+        echo "[entrypoint] WARNING: Keeping both paths to avoid data loss; check backup/restore layout"
+    fi
+elif [ ! -e "${LEGACY_UNIVERSE}" ]; then
+    ln -s "${CANONICAL_UNIVERSE}" "${LEGACY_UNIVERSE}" 2>/dev/null || true
 fi
 mkdir -p /var/log/supervisor
 mkdir -p /var/lib/tailscale
@@ -46,24 +68,27 @@ cp "$PERSISTENT_MACHINE_ID" /var/lib/dbus/machine-id 2>/dev/null || true
 echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
 
 
-# Token persistence sync (auth.enc <-> .downloader/auth.enc)
-AUTH_FILE="${HYTALE_DIR}/auth.enc"
+# Token persistence sync (auth.enc across root/server/.downloader)
+AUTH_FILE_ROOT="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_SERVER="${HYTALE_DIR}/Server/auth.enc"
 AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
-if [ ! -f "$AUTH_FILE" ] && [ -f "$AUTH_BACKUP" ]; then
-    echo "[entrypoint] Restoring auth.enc from persistent .downloader"
-    cp -f "$AUTH_BACKUP" "$AUTH_FILE" || true
+
+AUTH_SOURCE=""
+if [ -f "$AUTH_FILE_ROOT" ]; then
+    AUTH_SOURCE="$AUTH_FILE_ROOT"
+elif [ -f "$AUTH_FILE_SERVER" ]; then
+    AUTH_SOURCE="$AUTH_FILE_SERVER"
+elif [ -f "$AUTH_BACKUP" ]; then
+    AUTH_SOURCE="$AUTH_BACKUP"
 fi
-if [ -f "$AUTH_FILE" ] && [ ! -f "$AUTH_BACKUP" ]; then
-    echo "[entrypoint] Saving auth.enc to persistent .downloader"
-    cp -f "$AUTH_FILE" "$AUTH_BACKUP" || true
-fi
-if [ -f "$AUTH_FILE" ]; then
-    chown hytale:hytale "$AUTH_FILE" || true
-    chmod 600 "$AUTH_FILE" || true
-fi
-if [ -f "$AUTH_BACKUP" ]; then
-    chown hytale:hytale "$AUTH_BACKUP" || true
-    chmod 600 "$AUTH_BACKUP" || true
+
+if [ -n "$AUTH_SOURCE" ]; then
+    echo "[entrypoint] Syncing auth token from: $AUTH_SOURCE"
+    cp -f "$AUTH_SOURCE" "$AUTH_FILE_ROOT" 2>/dev/null || true
+    cp -f "$AUTH_SOURCE" "$AUTH_FILE_SERVER" 2>/dev/null || true
+    cp -f "$AUTH_SOURCE" "$AUTH_BACKUP" 2>/dev/null || true
+    chown hytale:hytale "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
+    chmod 600 "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
 fi
 
 # Setup Docker socket access for port mapping display
@@ -109,18 +134,39 @@ fi
 
 # Ensure scripts are executable (in case permissions were lost)
 echo "[entrypoint] Ensuring script permissions..."
-chmod +x ${HYTALE_DIR}/start.sh 2>/dev/null || true
-chmod +x /usr/local/bin/hytale-*.sh 2>/dev/null || true
+for script in \
+    "${HYTALE_DIR}/start.sh" \
+    "/usr/local/bin/hytale-server-wrapper.sh" \
+    "/usr/local/bin/hytale-download.sh" \
+    "/usr/local/bin/hytale-fetch-downloader.sh" \
+    "/usr/local/bin/tailscale-connect.sh" \
+    "/usr/local/sbin/hytale-token.sh"; do
+    if [ -f "$script" ]; then
+        # Normalize accidental CRLF line endings from NAS/editor workflows.
+        sed -i 's/\r$//' "$script" 2>/dev/null || true
+    fi
+done
+
+chmod 750 "${HYTALE_DIR}/start.sh" 2>/dev/null || true
+chmod 755 /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh 2>/dev/null || true
+chown hytale:hytale "${HYTALE_DIR}/start.sh" 2>/dev/null || true
+chown root:root /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh 2>/dev/null || true
 
 # Verify start.sh is executable (critical for supervisord)
 if [ -f "${HYTALE_DIR}/start.sh" ]; then
     if [ ! -x "${HYTALE_DIR}/start.sh" ]; then
         echo "[entrypoint] WARNING: start.sh is not executable, fixing..."
-        chmod +x ${HYTALE_DIR}/start.sh
+        chmod 750 ${HYTALE_DIR}/start.sh
     fi
     echo "[entrypoint] start.sh permissions: $(ls -la ${HYTALE_DIR}/start.sh)"
 else
     echo "[entrypoint] WARNING: start.sh not found at ${HYTALE_DIR}/start.sh"
+fi
+
+if [ -f "/usr/local/bin/hytale-server-wrapper.sh" ]; then
+    echo "[entrypoint] wrapper permissions: $(ls -la /usr/local/bin/hytale-server-wrapper.sh)"
+else
+    echo "[entrypoint] WARNING: wrapper not found at /usr/local/bin/hytale-server-wrapper.sh"
 fi
 
 # Fix permissions for volumes
@@ -201,6 +247,23 @@ mkdir -p "${SUPERVISOR_CONFIG_DIR}"
 
 # Copy base configuration to writable location
 cp /etc/supervisor/conf.d/supervisord.conf "${SUPERVISOR_CONFIG}"
+
+# Try to restore server binaries from persistent downloader cache if mount is missing/empty
+SERVER_CACHE_ARCHIVE="${HYTALE_DIR}/.downloader/server-files-cache.tar.gz"
+SERVER_JAR="${HYTALE_DIR}/Server/HytaleServer.jar"
+ASSETS_ZIP="${HYTALE_DIR}/Assets.zip"
+if [ ! -f "$SERVER_JAR" ] || [ ! -f "$ASSETS_ZIP" ]; then
+    if [ -f "$SERVER_CACHE_ARCHIVE" ]; then
+        echo "[entrypoint] Server files missing. Attempting restore from persistent downloader cache..."
+        if tar -xzf "$SERVER_CACHE_ARCHIVE" -C "${HYTALE_DIR}" 2>/dev/null; then
+            echo "[entrypoint] Server files restored from cache"
+            chown -R hytale:hytale "${HYTALE_DIR}/Server" 2>/dev/null || true
+            chown hytale:hytale "${HYTALE_DIR}/Assets.zip" 2>/dev/null || true
+        else
+            echo "[entrypoint] WARNING: Failed to restore server files from cache"
+        fi
+    fi
+fi
 
 # Check if server is installed
 SERVER_JAR="${HYTALE_DIR}/Server/HytaleServer.jar"

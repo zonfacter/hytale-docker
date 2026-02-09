@@ -38,6 +38,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TAILSCALE_HOSTNAME=hytale-server \
     TAILSCALE_ADVERTISE_ROUTES="" \
     # Internal
+    HYTALE_DOCKER_MODE=true \
     PUID=1000 \
     PGID=1000
 
@@ -79,7 +80,11 @@ RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gp
 # (the server runs from the Server/ subdirectory)
 RUN groupadd -g ${PGID} hytale && \
     useradd -u ${PUID} -g hytale -m -d ${HYTALE_DIR} -s /bin/bash hytale && \
-    mkdir -p ${HYTALE_DIR}/{backups,mods,Server/universe/worlds/default,.downloader,logs} && \
+    mkdir -p ${HYTALE_DIR}/backups \
+             ${HYTALE_DIR}/mods \
+             ${HYTALE_DIR}/Server/universe/worlds/default \
+             ${HYTALE_DIR}/.downloader \
+             ${HYTALE_DIR}/logs && \
     mkdir -p ${DASHBOARD_DIR} && \
     chown -R hytale:hytale ${HYTALE_DIR}
 
@@ -103,9 +108,10 @@ COPY --chown=root:root scripts/download-server.sh /usr/local/bin/hytale-download
 COPY --chown=root:root scripts/fetch-downloader.sh /usr/local/bin/hytale-fetch-downloader.sh
 COPY --chown=root:root scripts/server-wrapper.sh /usr/local/bin/hytale-server-wrapper.sh
 COPY --chown=root:root scripts/tailscale-connect.sh /usr/local/bin/tailscale-connect.sh
+COPY --chown=root:root scripts/hytale-token.sh /usr/local/sbin/hytale-token.sh
 
 # Make scripts executable
-RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/tailscale-connect.sh
+RUN chmod +x /entrypoint.sh ${HYTALE_DIR}/start.sh /usr/local/bin/hytale-download.sh /usr/local/bin/hytale-fetch-downloader.sh /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh
 
 # Setup wizard page (overwrites dashboard templates)
 COPY --chown=hytale:hytale dashboard/templates/setup.html ${DASHBOARD_DIR}/templates/setup.html
@@ -140,7 +146,7 @@ VOLUME ["${HYTALE_DIR}/Server/universe", "${HYTALE_DIR}/mods", "${HYTALE_DIR}/ba
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${DASHBOARD_PORT}/api/status || exit 1
+    CMD curl -f http://localhost:${DASHBOARD_PORT}/api/setup/status || exit 1
 
 WORKDIR ${HYTALE_DIR}
 ENTRYPOINT ["/entrypoint.sh"]

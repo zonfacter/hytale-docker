@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.10.4 - Persistence Guard + Server Cache Restore
+
+- `fix` Setup-Wizard blockiert den Download, wenn `/opt/hytale-server/Server` nicht persistent gemountet ist, inklusive klarer Handlungshinweise.
+- `fix` Download-Script erstellt jetzt einen persistenten Server-Cache (`.downloader/server-files-cache.tar.gz`) nach erfolgreicher Installation.
+- `fix` EntryPoint versucht bei fehlenden Serverdateien automatisch die Wiederherstellung aus dem persistenten Downloader-Cache.
+- `docs` Quick-Start `docker run` Beispiele in `README.md` und `DOCKERHUB.md` um `/opt/hytale-server/Server` Mount erweitert.
+
+## v1.10.3 - Docker Command Adapter + World Layout Guard
+
+- `feature` Docker Console nutzt jetzt zentralen Command-Adapter (`.server_command` mit FIFO-Fallback) statt harter Pipe-Annahme.
+- `fix` Docker-Mode-Erkennung gehaertet (`HYTALE_DOCKER_MODE=true` + Container-Marker), damit native Script-Pfade im Container nicht aktiv werden.
+- `fix` EntryPoint normalisiert Legacy-`/universe` gegen `Server/universe` und migriert bei Bedarf einmalig, um World-Layout-Konflikte zu reduzieren.
+
 ## [v1.10.2] - 2026-02-08
 
 ### Fixed

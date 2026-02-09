@@ -48,6 +48,7 @@ docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
+  -v hytale-server-bin:/opt/hytale-server/Server \
   -v hytale-universe:/opt/hytale-server/Server/universe \
   -v hytale-mods:/opt/hytale-server/mods \
   -v hytale-backups:/opt/hytale-server/backups \
@@ -63,7 +64,7 @@ docker run -d \
 
 ```bash
 # Create data directory
-mkdir -p hytale-data/{universe,mods,backups,downloader}
+mkdir -p hytale-data/{server,universe,mods,backups,downloader}
 
 # Run container with bind mounts
 # Note: Universe path is Server/universe/ since Hytale Server 2026.01
@@ -71,6 +72,7 @@ docker run -d \
   --name hytale-server \
   -p 8088:8088 \
   -p 5520:5520/udp \
+  -v $(pwd)/hytale-data/server:/opt/hytale-server/Server \
   -v $(pwd)/hytale-data/universe:/opt/hytale-server/Server/universe \
   -v $(pwd)/hytale-data/mods:/opt/hytale-server/mods \
   -v $(pwd)/hytale-data/backups:/opt/hytale-server/backups \
@@ -487,6 +489,15 @@ The downloader is fetched automatically from `https://downloader.hytale.com/hyta
 ### OAuth link doesn't appear
 - Click "Refresh Log" in the setup wizard
 - Check if downloader file exists (see "Downloader not found" above)
+
+### Token restore says OK, but players are still rejected
+- Symptom in server log: `Server session token not available` or `/auth status` shows `Token Source: Not authenticated`.
+- Cause: `auth.enc` can be runtime-bound (for example after container rebuild/reinstall with different machine identity).
+- Important: File restore can be technically correct, but runtime authentication can still be invalid.
+- Recommended fix:
+  1. Run `/auth login device` (or browser login) again.
+  2. Run `/auth persistence Encrypted`.
+  3. Create a fresh token backup and use that backup for future restores.
 
 ### Server won't start
 - Check logs: `docker-compose logs hytale`

@@ -3,948 +3,1011 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hytale Server - Ersteinrichtung / Setup</title>
+  <title>Hytale Server - Setup</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    .setup-container {
-      max-width: 800px;
+    .setup-shell {
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 22px;
+      display: grid;
+      gap: 16px;
     }
-    .setup-header {
-      text-align: center;
-      margin-bottom: 32px;
+    .hero {
+      background: linear-gradient(135deg, rgba(20, 40, 30, 0.85), rgba(18, 25, 36, 0.88));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    .setup-header h1 {
-      font-size: 28px;
-      margin-bottom: 8px;
+    .hero h1 {
+      margin: 0 0 6px 0;
+      font-size: 26px;
+      line-height: 1.2;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
     }
     .lang-switch {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 24px;
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      overflow: hidden;
     }
     .lang-btn {
+      border: 0;
       background: transparent;
-      border: 1px solid var(--line);
       color: var(--muted);
-      padding: 6px 16px;
-      border-radius: 6px;
+      padding: 8px 14px;
       cursor: pointer;
     }
     .lang-btn.active {
       background: var(--accent);
-      border-color: var(--accent);
       color: #fff;
     }
-    .step {
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .status-card {
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
+      padding: 12px;
+      min-height: 90px;
     }
-    .step-header {
+    .status-card .k {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-card .v {
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    .setup-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px) {
+      .setup-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .panel h2 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+    }
+    .panel p {
+      margin: 0;
+    }
+    .row {
       display: flex;
+      gap: 8px;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
-    .step-number {
-      width: 32px;
-      height: 32px;
-      background: var(--accent);
-      color: #fff;
-      border-radius: 50%;
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: rgba(8, 12, 16, 0.45);
+    }
+    .step-head {
       display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-weight: 600;
-    }
-    .step-number.done {
-      background: var(--green);
-    }
-    .step-number.pending {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
       background: var(--muted);
     }
+    .step-num.done { background: var(--green); }
+    .step-num.active { background: var(--accent); }
     .step-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
     }
-    .step-content {
-      margin-left: 44px;
+    .hint {
+      margin-top: 6px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(59, 130, 246, 0.08);
+      font-size: 13px;
     }
-    .download-log {
-      background: #080c10;
+    .hint.warn {
+      border-color: var(--yellow);
+      background: rgba(234, 179, 8, 0.08);
+    }
+    .hint.err {
+      border-color: var(--red);
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .terminal {
+      margin-top: 8px;
+      background: #070a0e;
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px;
+      min-height: 110px;
       max-height: 300px;
       overflow: auto;
-      font-family: monospace;
-      font-size: 12px;
-      line-height: 1.6;
       white-space: pre-wrap;
-      word-break: break-all;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #c8d5e0;
+    }
+    .terminal a { color: var(--accent); }
+    .muted-note {
+      font-size: 12px;
       color: var(--muted);
-      margin-top: 12px;
+      margin-top: 6px;
     }
-    .download-log .oauth-link {
-      color: var(--accent);
-      text-decoration: underline;
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .table th,
+    .table td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .table th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: rgba(148, 163, 184, 0.12);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .collapse-btn {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fg);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: left;
       cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
     }
-    .download-log .error {
-      color: var(--red);
+    .collapse-body {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(8, 12, 16, 0.45);
     }
-    .download-log .success {
-      color: var(--green);
-    }
-    .info-box {
-      background: rgba(59,130,246,0.1);
-      border: 1px solid var(--accent);
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin: 12px 0;
-      font-size: 13px;
-    }
-    .warning-box {
-      background: rgba(234,179,8,0.1);
-      border: 1px solid var(--yellow);
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin: 12px 0;
-      font-size: 13px;
-    }
-    .success-box {
-      background: rgba(34,197,94,0.1);
-      border: 1px solid var(--green);
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin: 12px 0;
-      text-align: center;
-    }
+    .ok { color: var(--green); }
+    .warn { color: var(--yellow); }
+    .err { color: var(--red); }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="setup-container">
-    <div class="setup-header">
-      <h1>🎮 Hytale Server Setup</h1>
-      <p class="muted" id="subtitle-de">Ersteinrichtung des Servers</p>
-      <p class="muted hidden" id="subtitle-en">Initial Server Setup</p>
-    </div>
-
-    <!-- Language Switch -->
-    <div class="lang-switch">
-      <button class="lang-btn active" data-lang="de">Deutsch</button>
-      <button class="lang-btn" data-lang="en">English</button>
-    </div>
-
-    <!-- Network Info (Port Mappings) -->
-    <div class="step" id="network-info" style="background: rgba(59,130,246,0.05); border-color: var(--accent);">
-      <div class="step-header">
-        <span class="step-number" style="background: var(--accent);">🌐</span>
-        <span class="step-title">
-          <span class="lang-de">Netzwerk-Information</span>
-          <span class="lang-en hidden">Network Information</span>
-        </span>
+  <div class="setup-shell">
+    <section class="hero">
+      <div>
+        <h1>
+          <span class="lang-de">Hytale Setup Cockpit</span>
+          <span class="lang-en hidden">Hytale Setup Cockpit</span>
+        </h1>
+        <p>
+          <span class="lang-de">Downloader, Server-Auth, Token-Backups und Netzwerk an einem Ort.</span>
+          <span class="lang-en hidden">Downloader, server auth, token backups, and network in one place.</span>
+        </p>
       </div>
-      <div class="step-content">
-        <div id="port-mappings-loading" class="muted">
-          <span class="lang-de">Lade Port-Mappings...</span>
-          <span class="lang-en hidden">Loading port mappings...</span>
+      <div class="lang-switch" role="tablist" aria-label="Language switch">
+        <button class="lang-btn active" data-lang="de">Deutsch</button>
+        <button class="lang-btn" data-lang="en">English</button>
+      </div>
+    </section>
+
+    <section class="status-grid">
+      <div class="status-card">
+        <div class="k">
+          <span class="lang-de">Downloader</span>
+          <span class="lang-en hidden">Downloader</span>
         </div>
-        <div id="port-mappings" style="display: none;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-            <thead>
-              <tr style="border-bottom: 1px solid var(--line);">
-                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
-                  <span class="lang-de">Dienst</span>
-                  <span class="lang-en hidden">Service</span>
-                </th>
-                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
-                  <span class="lang-de">Interner Port</span>
-                  <span class="lang-en hidden">Internal Port</span>
-                </th>
-                <th style="text-align: left; padding: 8px 0; color: var(--muted);">
-                  <span class="lang-de">Externer Port</span>
-                  <span class="lang-en hidden">External Port</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody id="port-table-body">
-            </tbody>
-          </table>
-          <p class="muted" style="margin-top: 12px; font-size: 12px;">
-            <span class="lang-de">💡 Spieler verbinden sich über den <strong>externen Game Port (UDP)</strong>.</span>
-            <span class="lang-en hidden">💡 Players connect using the <strong>external Game Port (UDP)</strong>.</span>
+        <div class="v" id="status-downloader">-</div>
+      </div>
+      <div class="status-card">
+        <div class="k">
+          <span class="lang-de">Server-Dateien</span>
+          <span class="lang-en hidden">Server Files</span>
+        </div>
+        <div class="v" id="status-server">-</div>
+      </div>
+      <div class="status-card">
+        <div class="k">
+          <span class="lang-de">Token / Session</span>
+          <span class="lang-en hidden">Token / Session</span>
+        </div>
+        <div class="v" id="status-auth">-</div>
+      </div>
+      <div class="status-card">
+        <div class="k">
+          <span class="lang-de">Persistenz</span>
+          <span class="lang-en hidden">Persistence</span>
+        </div>
+        <div class="v" id="status-persistence">-</div>
+      </div>
+    </section>
+
+    <section class="setup-grid">
+      <div class="stack">
+        <div class="panel">
+          <h2>
+            <span class="lang-de">Setup-Flow</span>
+            <span class="lang-en hidden">Setup Flow</span>
+          </h2>
+          <div class="stack">
+            <div class="step" id="step-downloader">
+              <div class="step-head">
+                <span class="step-num" id="step1-num">1</span>
+                <span class="step-title">
+                  <span class="lang-de">Downloader prüfen</span>
+                  <span class="lang-en hidden">Check Downloader</span>
+                </span>
+              </div>
+              <p class="muted-note">
+                <span class="lang-de">Automatisch über `hytale-downloader.zip` beim Start.</span>
+                <span class="lang-en hidden">Automatic via `hytale-downloader.zip` on startup.</span>
+              </p>
+              <div class="hint" id="downloader-status-detail">
+                <span class="lang-de">Prüfe Status...</span>
+                <span class="lang-en hidden">Checking status...</span>
+              </div>
+            </div>
+
+            <div class="step" id="step-download">
+              <div class="step-head">
+                <span class="step-num" id="step2-num">2</span>
+                <span class="step-title">
+                  <span class="lang-de">Server-Download</span>
+                  <span class="lang-en hidden">Server Download</span>
+                </span>
+              </div>
+              <p class="muted-note">
+                <span class="lang-de">Startet Setup-Download und zeigt Setup-Log.</span>
+                <span class="lang-en hidden">Starts setup download and shows setup log.</span>
+              </p>
+              <div class="hint warn" id="oauth-warning">
+                <span class="lang-de">Hinweis: OAuth-Link erscheint im Setup-Log. Link im Browser öffnen.</span>
+                <span class="lang-en hidden">Note: OAuth link appears in setup log. Open it in browser.</span>
+              </div>
+              <div class="hint err hidden" id="persistence-warning"></div>
+              <div class="row" style="margin-top: 8px;">
+                <button id="btn-download" class="btn-control">
+                  <span class="lang-de">Download starten</span>
+                  <span class="lang-en hidden">Start Download</span>
+                </button>
+                <button id="btn-refresh-log" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+                  <span class="lang-de">Log aktualisieren</span>
+                  <span class="lang-en hidden">Refresh Log</span>
+                </button>
+              </div>
+              <div id="download-log" class="terminal"></div>
+            </div>
+
+            <div class="step" id="step-auth">
+              <div class="step-head">
+                <span class="step-num" id="step3-num">3</span>
+                <span class="step-title">
+                  <span class="lang-de">Server-Authentifizierung</span>
+                  <span class="lang-en hidden">Server Authentication</span>
+                </span>
+              </div>
+              <p class="muted-note">
+                <span class="lang-de">Sendet `/auth login browser|device` direkt an den Server.</span>
+                <span class="lang-en hidden">Sends `/auth login browser|device` directly to server.</span>
+              </p>
+              <div class="row" style="margin-top: 8px;">
+                <button id="btn-auth-browser" class="btn-control">
+                  <span class="lang-de">Browser Login</span>
+                  <span class="lang-en hidden">Browser Login</span>
+                </button>
+                <button id="btn-auth-device" class="btn-control" style="background: transparent; border: 1px solid var(--accent);">
+                  <span class="lang-de">Device Login</span>
+                  <span class="lang-en hidden">Device Login</span>
+                </button>
+                <button id="btn-refresh-auth-log" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+                  <span class="lang-de">Console Log laden</span>
+                  <span class="lang-en hidden">Load Console Log</span>
+                </button>
+              </div>
+              <div id="auth-status" class="muted-note" style="margin-top: 8px;"></div>
+              <div id="auth-log" class="terminal"></div>
+            </div>
+
+            <div class="step hidden" id="step4">
+              <div class="step-head">
+                <span class="step-num done">✓</span>
+                <span class="step-title">
+                  <span class="lang-de">Setup abgeschlossen</span>
+                  <span class="lang-en hidden">Setup Complete</span>
+                </span>
+              </div>
+              <div class="hint">
+                <span class="lang-de">Server ist bereit. Weiter mit dem Dashboard.</span>
+                <span class="lang-en hidden">Server is ready. Continue to dashboard.</span>
+              </div>
+              <div style="margin-top: 8px;">
+                <a href="/" class="btn-control" style="display: inline-block; text-decoration: none;">
+                  <span class="lang-de">Zum Dashboard</span>
+                  <span class="lang-en hidden">Go to Dashboard</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <h2>
+            <span class="lang-de">Token-Backups</span>
+            <span class="lang-en hidden">Token Backups</span>
+          </h2>
+          <p class="muted-note">
+            <span class="lang-de">Hier sicherst und restaurierst du `auth.enc` direkt im Docker-Mode.</span>
+            <span class="lang-en hidden">Back up and restore `auth.enc` directly in Docker mode.</span>
           </p>
-        </div>
-        <div id="port-mappings-error" style="display: none; color: var(--yellow);">
-          <span class="lang-de">⚠️ Port-Mappings nicht verfügbar. Docker Socket nicht gemountet?</span>
-          <span class="lang-en hidden">⚠️ Port mappings unavailable. Docker socket not mounted?</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 1: Downloader -->
-    <div class="step" id="step1">
-      <div class="step-header">
-        <span class="step-number" id="step1-num">1</span>
-        <span class="step-title">
-          <span class="lang-de">Hytale Downloader (Automatisch)</span>
-          <span class="lang-en hidden">Hytale Downloader (Automatic)</span>
-        </span>
-      </div>
-      <div class="step-content">
-        <p class="lang-de">
-          Der Hytale Downloader wird automatisch von <code>hytale.com</code> heruntergeladen.
-        </p>
-        <p class="lang-en hidden">
-          The Hytale Downloader is automatically fetched from <code>hytale.com</code>.
-        </p>
-
-        <div class="info-box">
-          <strong class="lang-de">ℹ️ Automatischer Download:</strong>
-          <strong class="lang-en hidden">ℹ️ Automatic Download:</strong>
-          <p class="lang-de" style="margin: 8px 0 0 0;">
-            Der Downloader wird beim Container-Start automatisch von<br>
-            <code>https://downloader.hytale.com/hytale-downloader.zip</code><br>
-            heruntergeladen und entpackt.
-          </p>
-          <p class="lang-en hidden" style="margin: 8px 0 0 0;">
-            The downloader is automatically fetched from<br>
-            <code>https://downloader.hytale.com/hytale-downloader.zip</code><br>
-            and extracted on container start.
-          </p>
+          <div class="row" style="margin-top: 8px;">
+            <button id="btn-token-backup" class="btn-control">
+              <span class="lang-de">Backup jetzt</span>
+              <span class="lang-en hidden">Backup Now</span>
+            </button>
+            <button id="btn-token-refresh" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+              <span class="lang-de">Liste aktualisieren</span>
+              <span class="lang-en hidden">Refresh List</span>
+            </button>
+          </div>
+          <div id="token-status" class="muted-note" style="margin-top: 8px;"></div>
+          <div style="overflow:auto; margin-top: 6px;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th><span class="lang-de">Datei</span><span class="lang-en hidden">File</span></th>
+                  <th><span class="lang-de">Größe</span><span class="lang-en hidden">Size</span></th>
+                  <th><span class="lang-de">Zeit</span><span class="lang-en hidden">Time</span></th>
+                  <th><span class="lang-de">Aktion</span><span class="lang-en hidden">Action</span></th>
+                </tr>
+              </thead>
+              <tbody id="token-table-body">
+                <tr><td colspan="4" class="muted">
+                  <span class="lang-de">Lade Token-Backups...</span>
+                  <span class="lang-en hidden">Loading token backups...</span>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div id="downloader-status" class="muted" style="margin-top: 12px;">
-          <span class="lang-de">Prüfe Downloader...</span>
-          <span class="lang-en hidden">Checking downloader...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 2: Download Server -->
-    <div class="step" id="step2">
-      <div class="step-header">
-        <span class="step-number pending" id="step2-num">2</span>
-        <span class="step-title">
-          <span class="lang-de">Server herunterladen</span>
-          <span class="lang-en hidden">Download Server</span>
-        </span>
-      </div>
-      <div class="step-content">
-        <p class="lang-de">
-          Starte den Download und authentifiziere dich mit deinem Hytale-Account.
-        </p>
-        <p class="lang-en hidden">
-          Start the download and authenticate with your Hytale account.
-        </p>
-
-        <div class="warning-box" id="oauth-warning">
-          <strong class="lang-de">⚠️ Wichtig:</strong>
-          <strong class="lang-en hidden">⚠️ Important:</strong>
-          <span class="lang-de">
-            Nach dem Start erscheint ein OAuth-Link in der Log-Ausgabe unten.
-            Kopiere diesen Link und öffne ihn in deinem Browser, um dich anzumelden.
-          </span>
-          <span class="lang-en hidden">
-            After starting, an OAuth link will appear in the log output below.
-            Copy this link and open it in your browser to authenticate.
-          </span>
+        <div class="panel">
+          <h2>
+            <span class="lang-de">Netzwerk & Ports</span>
+            <span class="lang-en hidden">Network & Ports</span>
+          </h2>
+          <div class="row" style="margin-bottom: 8px;">
+            <span class="chip">/api/ports</span>
+            <span class="chip" id="ports-chip-status">-</span>
+          </div>
+          <div style="overflow:auto;">
+            <table class="table" id="ports-table">
+              <thead>
+                <tr>
+                  <th><span class="lang-de">Dienst</span><span class="lang-en hidden">Service</span></th>
+                  <th><span class="lang-de">Intern</span><span class="lang-en hidden">Internal</span></th>
+                  <th><span class="lang-de">Extern</span><span class="lang-en hidden">External</span></th>
+                </tr>
+              </thead>
+              <tbody id="port-table-body"></tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="actions" style="margin-top: 12px;">
-          <button id="btn-download" class="btn-control" disabled>
-            <span class="lang-de">Download starten</span>
-            <span class="lang-en hidden">Start Download</span>
-          </button>
-          <button id="btn-refresh-log" class="btn-control">
-            <span class="lang-de">Log aktualisieren</span>
-            <span class="lang-en hidden">Refresh Log</span>
-          </button>
-        </div>
-
-        <div id="download-log" class="download-log hidden"></div>
-      </div>
-    </div>
-
-    <!-- Step 3: Server Authentication -->
-    <div class="step" id="step3">
-      <div class="step-header">
-        <span class="step-number pending" id="step3-num">3</span>
-        <span class="step-title">
-          <span class="lang-de">Server Authentifizierung</span>
-          <span class="lang-en hidden">Server Authentication</span>
-        </span>
-      </div>
-      <div class="step-content">
-        <p class="lang-de">
-          Der Server muss mit deinem Hytale-Account verknüpft werden, damit Spieler joinen können.
-        </p>
-        <p class="lang-en hidden">
-          The server needs to be linked with your Hytale account so players can join.
-        </p>
-
-        <div class="warning-box" id="auth-warning">
-          <strong class="lang-de">⚠️ Wichtig:</strong>
-          <strong class="lang-en hidden">⚠️ Important:</strong>
-          <span class="lang-de">
-            Nach dem Klick auf "Server authentifizieren" erscheint ein OAuth-Link im Log unten.
-            Kopiere diesen Link und öffne ihn in deinem Browser.
-          </span>
-          <span class="lang-en hidden">
-            After clicking "Authenticate Server", an OAuth link will appear in the log below.
-            Copy this link and open it in your browser.
-          </span>
-        </div>
-
-        <div class="actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-          <button id="btn-auth-browser" class="btn-control">
-            <span class="lang-de">🌐 Browser Login</span>
-            <span class="lang-en hidden">🌐 Browser Login</span>
-          </button>
-          <button id="btn-auth-device" class="btn-control" style="background: transparent; border: 1px solid var(--accent);">
-            <span class="lang-de">📱 Device Login</span>
-            <span class="lang-en hidden">📱 Device Login</span>
-          </button>
-          <button id="btn-refresh-auth-log" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
-            <span class="lang-de">Log aktualisieren</span>
-            <span class="lang-en hidden">Refresh Log</span>
-          </button>
-        </div>
-        <p class="muted" style="margin-top: 8px; font-size: 12px;">
-          <span class="lang-de"><strong>Browser:</strong> Öffnet OAuth-Link im Browser | <strong>Device:</strong> Zeigt Code für Hytale-Client</span>
-          <span class="lang-en hidden"><strong>Browser:</strong> Opens OAuth link in browser | <strong>Device:</strong> Shows code for Hytale client</span>
-        </p>
-
-        <div id="auth-log" class="download-log" style="margin-top: 12px; display: none;"></div>
-        <div id="auth-status" style="margin-top: 8px;"></div>
-      </div>
-    </div>
-
-    <!-- Step 4: Complete -->
-    <div class="step hidden" id="step4">
-      <div class="step-header">
-        <span class="step-number done" id="step4-num">✓</span>
-        <span class="step-title">
-          <span class="lang-de">Installation abgeschlossen!</span>
-          <span class="lang-en hidden">Installation Complete!</span>
-        </span>
-      </div>
-      <div class="step-content">
-        <div class="success-box">
-          <p class="lang-de" style="font-size: 16px; margin-bottom: 12px;">
-            🎉 Dein Hytale Server ist bereit!
-          </p>
-          <p class="lang-en hidden" style="font-size: 16px; margin-bottom: 12px;">
-            🎉 Your Hytale Server is ready!
-          </p>
-          <a href="/" class="btn-control" style="display: inline-block; text-decoration: none;">
-            <span class="lang-de">Zum Dashboard</span>
-            <span class="lang-en hidden">Go to Dashboard</span>
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Section -->
-    <div class="step" id="settings-section" style="margin-top: 32px;">
-      <div class="step-header" style="cursor: pointer;" onclick="toggleSettings()">
-        <span class="step-number" style="background: var(--muted);">⚙</span>
-        <span class="step-title">
-          <span class="lang-de">Einstellungen (Optional)</span>
-          <span class="lang-en hidden">Settings (Optional)</span>
-        </span>
-        <span id="settings-toggle" style="margin-left: auto; font-size: 20px;">▼</span>
-      </div>
-      <div class="step-content" id="settings-content" style="display: none;">
-        <p class="muted" style="margin-bottom: 16px;">
-          <span class="lang-de">Diese Einstellungen können auch später im Dashboard geändert werden.</span>
-          <span class="lang-en hidden">These settings can also be changed later in the dashboard.</span>
-        </p>
-
-        <!-- CurseForge API Key -->
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 500;">
-            <span class="lang-de">CurseForge API Key</span>
-            <span class="lang-en hidden">CurseForge API Key</span>
-          </label>
-          <input type="password" id="cf-api-key" placeholder="$2a$10$..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);" />
-          <p class="muted" style="margin-top: 4px; font-size: 12px;">
-            <span class="lang-de">Für Mod-Downloads von CurseForge. <a href="https://console.curseforge.com/" target="_blank">Key erstellen →</a></span>
-            <span class="lang-en hidden">For mod downloads from CurseForge. <a href="https://console.curseforge.com/" target="_blank">Get API key →</a></span>
-          </p>
-        </div>
-
-        <!-- Downloader URL -->
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 500;">
-            <span class="lang-de">Downloader URL</span>
-            <span class="lang-en hidden">Downloader URL</span>
-          </label>
-          <input type="text" id="downloader-url" placeholder="https://downloader.hytale.com/hytale-downloader.zip" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);" />
-          <p class="muted" style="margin-top: 4px; font-size: 12px;">
-            <span class="lang-de">URL zum Hytale Downloader (normalerweise nicht ändern)</span>
-            <span class="lang-en hidden">URL to Hytale Downloader (usually don't change)</span>
-          </p>
-        </div>
-
-        <div class="actions" style="display: flex; gap: 8px; align-items: center;">
-          <button id="btn-save-settings" class="btn-control">
-            <span class="lang-de">Speichern</span>
-            <span class="lang-en hidden">Save</span>
-          </button>
-          <button id="btn-test-cf" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
-            <span class="lang-de">CF-Key testen</span>
-            <span class="lang-en hidden">Test CF Key</span>
-          </button>
-          <span id="settings-status" class="muted" style="margin-left: 8px;"></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tailscale VPN Section -->
-    <div class="step" id="tailscale-section" style="margin-top: 16px;">
-      <div class="step-header" style="cursor: pointer;" onclick="toggleTailscale()">
-        <span class="step-number" style="background: var(--muted);">🔗</span>
-        <span class="step-title">
-          <span class="lang-de">Tailscale VPN (Optional)</span>
-          <span class="lang-en hidden">Tailscale VPN (Optional)</span>
-        </span>
-        <span id="tailscale-toggle" style="margin-left: auto; font-size: 20px;">▼</span>
-      </div>
-      <div class="step-content" id="tailscale-content" style="display: none;">
-        <p class="muted" style="margin-bottom: 16px;">
-          <span class="lang-de">Tailscale ermöglicht sicheren Remote-Zugriff ohne Port-Forwarding.</span>
-          <span class="lang-en hidden">Tailscale enables secure remote access without port-forwarding.</span>
-        </p>
-
-        <div id="tailscale-status-display" style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="lang-de" style="font-weight: 500;">Status:</span>
-            <span class="lang-en hidden" style="font-weight: 500;">Status:</span>
-            <span id="tailscale-status-text" class="muted">
-              <span class="lang-de">Wird geladen...</span>
-              <span class="lang-en hidden">Loading...</span>
+        <div class="panel">
+          <button id="btn-toggle-settings" class="collapse-btn" type="button">
+            <span>
+              <span class="lang-de">Einstellungen (optional)</span>
+              <span class="lang-en hidden">Settings (optional)</span>
             </span>
-          </div>
-          <div id="tailscale-ip-display" style="display: none; margin-top: 8px; padding: 12px; background: var(--card); border-left: 3px solid var(--green); border-radius: 6px;">
-            <div style="margin-bottom: 4px;">
-              <span class="lang-de" style="font-weight: 500;">Tailscale IP:</span>
-              <span class="lang-en hidden" style="font-weight: 500;">Tailscale IP:</span>
-              <code id="tailscale-ip" style="margin-left: 8px; color: var(--green);"></code>
-            </div>
-            <div style="margin-top: 8px;">
-              <span class="lang-de" style="font-weight: 500;">Spieler können joinen über:</span>
-              <span class="lang-en hidden" style="font-weight: 500;">Players can connect via:</span>
-              <code id="tailscale-connect-info" style="display: block; margin-top: 4px; color: var(--accent);"></code>
-            </div>
-          </div>
-        </div>
-
-        <div class="actions" style="display: flex; gap: 8px; align-items: center;">
-          <button id="btn-refresh-tailscale" class="btn-control">
-            <span class="lang-de">Status aktualisieren</span>
-            <span class="lang-en hidden">Refresh Status</span>
+            <span id="settings-arrow">▼</span>
           </button>
-          <span id="tailscale-action-status" class="muted" style="margin-left: 8px;"></span>
+          <div id="settings-content" class="collapse-body">
+            <div class="stack">
+              <label>
+                <span class="muted-note">CurseForge API Key</span>
+                <input type="password" id="cf-api-key" placeholder="$2a$10$..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--fg); margin-top:4px;" />
+              </label>
+              <label>
+                <span class="muted-note">Downloader URL</span>
+                <input type="text" id="downloader-url" placeholder="https://downloader.hytale.com/hytale-downloader.zip" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--fg); margin-top:4px;" />
+              </label>
+              <div class="row">
+                <button id="btn-save-settings" class="btn-control">
+                  <span class="lang-de">Speichern</span>
+                  <span class="lang-en hidden">Save</span>
+                </button>
+                <button id="btn-test-cf" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+                  <span class="lang-de">CF testen</span>
+                  <span class="lang-en hidden">Test CF</span>
+                </button>
+              </div>
+              <div id="settings-status" class="muted-note"></div>
+            </div>
+          </div>
         </div>
 
-        <div class="info-box" style="margin-top: 16px;">
-          <strong class="lang-de">ℹ️ Tailscale aktivieren:</strong>
-          <strong class="lang-en hidden">ℹ️ Enable Tailscale:</strong>
-          <p class="lang-de" style="margin: 8px 0 0 0;">
-            Setze <code>TAILSCALE_ENABLED=true</code> in den Environment Variables und starte den Container neu.<br>
-            Optional: <code>TAILSCALE_AUTHKEY=tskey-auth-xxxxx</code> für automatische Authentifizierung.<br>
-            Auth Keys können unter <a href="https://login.tailscale.com/admin/settings/keys" target="_blank">login.tailscale.com/admin/settings/keys</a> erstellt werden.
-          </p>
-          <p class="lang-en hidden" style="margin: 8px 0 0 0;">
-            Set <code>TAILSCALE_ENABLED=true</code> in the environment variables and restart the container.<br>
-            Optional: <code>TAILSCALE_AUTHKEY=tskey-auth-xxxxx</code> for automatic authentication.<br>
-            Auth keys can be created at <a href="https://login.tailscale.com/admin/settings/keys" target="_blank">login.tailscale.com/admin/settings/keys</a>.
-          </p>
+        <div class="panel">
+          <button id="btn-toggle-tailscale" class="collapse-btn" type="button">
+            <span>
+              <span class="lang-de">Tailscale (optional)</span>
+              <span class="lang-en hidden">Tailscale (optional)</span>
+            </span>
+            <span id="tailscale-arrow">▼</span>
+          </button>
+          <div id="tailscale-content" class="collapse-body">
+            <div class="row" style="justify-content: space-between;">
+              <div id="tailscale-status-text" class="muted-note">Loading...</div>
+              <button id="btn-refresh-tailscale" class="btn-control" style="background: transparent; border: 1px solid var(--line);">
+                <span class="lang-de">Aktualisieren</span>
+                <span class="lang-en hidden">Refresh</span>
+              </button>
+            </div>
+            <div id="tailscale-ip-display" class="hint" style="margin-top: 8px; display: none;">
+              <div><strong>Tailscale IP:</strong> <code id="tailscale-ip"></code></div>
+              <div style="margin-top: 4px;"><strong>Connect:</strong> <code id="tailscale-connect-info"></code></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-
+    </section>
   </div>
 
   <script>
-    (function() {
+    (function () {
       let currentLang = 'de';
       let downloadRunning = false;
-      let pollInterval = null;
+      let setupLogPoll = null;
+      let authLogPoll = null;
 
-      // Language switching
-      document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentLang = btn.dataset.lang;
-          updateLanguage();
-        });
-      });
+      const el = (id) => document.getElementById(id);
+      const txt = {
+        de: {
+          downloading: 'Download läuft...',
+          startDownload: 'Download starten',
+          authStarted: 'Login gestartet. Warte auf Token ...',
+          authDone: 'Token erhalten und Persistence gesetzt.',
+          authPartial: 'Token erhalten, Persistence bitte prüfen.',
+          tokenBackupOk: 'Token-Backup erstellt.',
+          tokenRestoreOk: 'Token-Restore angefordert.',
+          tokenRestoreBlocked: 'Token-Restore ist derzeit nicht verfuegbar.',
+        },
+        en: {
+          downloading: 'Downloading...',
+          startDownload: 'Start Download',
+          authStarted: 'Login started. Waiting for token ...',
+          authDone: 'Token received and persistence set.',
+          authPartial: 'Token received, verify persistence.',
+          tokenBackupOk: 'Token backup created.',
+          tokenRestoreOk: 'Token restore requested.',
+          tokenRestoreBlocked: 'Token restore is currently blocked in Docker mode.',
+        }
+      };
 
-      function updateLanguage() {
-        document.querySelectorAll('.lang-de').forEach(el => {
-          el.classList.toggle('hidden', currentLang !== 'de');
-        });
-        document.querySelectorAll('.lang-en').forEach(el => {
-          el.classList.toggle('hidden', currentLang !== 'en');
-        });
+      function t(k) {
+        return (txt[currentLang] && txt[currentLang][k]) || k;
       }
 
-      // Check status
+      function setLang(lang) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach((b) => b.classList.toggle('active', b.dataset.lang === lang));
+        document.querySelectorAll('.lang-de').forEach((node) => node.classList.toggle('hidden', lang !== 'de'));
+        document.querySelectorAll('.lang-en').forEach((node) => node.classList.toggle('hidden', lang !== 'en'));
+      }
+
+      function renderStatus(id, html) {
+        const node = el(id);
+        if (node) node.innerHTML = html;
+      }
+
+      function setStepDone(stepId, done, fallbackText) {
+        const node = el(stepId);
+        if (!node) return;
+        node.classList.toggle('done', !!done);
+        node.classList.toggle('active', !done);
+        node.textContent = done ? '✓' : fallbackText;
+      }
+
+      function normalizeLog(text) {
+        if (!text) return '';
+        return String(text)
+          .replace(/(https:\/\/[^\s]+)/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+          .replace(/ERROR:([^\n]*)/gi, '<span class="err">ERROR:$1</span>')
+          .replace(/(success|successful|erfolgreich)/gi, '<span class="ok">$1</span>');
+      }
+
+      async function api(url, options) {
+        const resp = await fetch(url, options);
+        let data;
+        try {
+          data = await resp.json();
+        } catch (_) {
+          data = {};
+        }
+        if (!resp.ok) {
+          const detail = (data && data.detail) ? data.detail : ('HTTP ' + resp.status);
+          throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+        }
+        return data;
+      }
+
       async function checkStatus() {
         try {
-          const resp = await fetch('/api/setup/status');
-          const data = await resp.json();
+          const data = await api('/api/setup/status');
+          const persistence = data.persistence || { ok: true, mounted: {}, warnings: [] };
+          const hasDownloader = !!data.downloader_exists;
+          const hasServer = !!data.server_installed;
+          const serverMountMissing = !(persistence.mounted && persistence.mounted.server_bin);
 
-          // Update Step 1
-          const step1Num = document.getElementById('step1-num');
-          const downloaderStatus = document.getElementById('downloader-status');
-          const btnDownload = document.getElementById('btn-download');
+          setStepDone('step1-num', hasDownloader, '1');
+          setStepDone('step2-num', hasServer, '2');
+          setStepDone('step3-num', !!data.credentials_exist, '3');
 
-          if (data.downloader_exists) {
-            step1Num.classList.add('done');
-            step1Num.textContent = '✓';
-            downloaderStatus.innerHTML = '<span style="color: var(--green);">✓ Downloader gefunden / Downloader found</span>';
-            btnDownload.disabled = false;
+          renderStatus('status-downloader', hasDownloader ? '<span class="ok">OK</span>' : '<span class="err">Missing</span>');
+          renderStatus('status-server', hasServer ? '<span class="ok">Installed</span>' : '<span class="warn">Not installed</span>');
+
+          if (serverMountMissing) {
+            renderStatus('status-persistence', '<span class="err">Server mount missing</span>');
+            el('persistence-warning').classList.remove('hidden');
+            el('persistence-warning').innerHTML = currentLang === 'de'
+              ? 'Der Mount <code>/opt/hytale-server/Server</code> fehlt. Container mit persistentem Server-Mount neu erstellen.'
+              : 'Mount <code>/opt/hytale-server/Server</code> is missing. Recreate container with persistent server mount.';
+            el('btn-download').disabled = true;
           } else {
-            step1Num.classList.remove('done');
-            step1Num.textContent = '1';
-            downloaderStatus.innerHTML = '<span style="color: var(--red);">✗ Downloader nicht gefunden / Downloader not found</span>';
-            btnDownload.disabled = true;
+            renderStatus('status-persistence', persistence.ok ? '<span class="ok">OK</span>' : '<span class="warn">Warnings</span>');
+            el('persistence-warning').classList.add('hidden');
+            el('btn-download').disabled = !hasDownloader;
           }
 
-          // Update Step 2
-          const step2Num = document.getElementById('step2-num');
-          if (data.server_installed) {
-            step2Num.classList.add('done');
-            step2Num.classList.remove('pending');
-            step2Num.textContent = '✓';
-            document.getElementById('step3').classList.remove('hidden');
-          }
+          renderStatus('status-auth', data.credentials_exist ? '<span class="ok">Credentials detected</span>' : '<span class="warn">Not configured</span>');
 
-          // If credentials exist, download might work without OAuth
-          if (data.credentials_exist) {
-            document.getElementById('oauth-warning').classList.add('hidden');
-          }
+          const statusDetail = hasDownloader
+            ? (currentLang === 'de' ? 'Downloader vorhanden.' : 'Downloader available.')
+            : (currentLang === 'de' ? 'Downloader fehlt.' : 'Downloader missing.');
+          el('downloader-status-detail').textContent = statusDetail;
 
-          return data;
-        } catch (e) {
-          console.error('Status check failed:', e);
-          return null;
+          if (data.credentials_exist) el('oauth-warning').classList.add('hidden');
+          if (hasServer && data.credentials_exist) el('step4').classList.remove('hidden');
+        } catch (err) {
+          renderStatus('status-downloader', '<span class="err">Error</span>');
+          renderStatus('status-server', '<span class="err">Error</span>');
+          renderStatus('status-auth', '<span class="err">Error</span>');
+          renderStatus('status-persistence', '<span class="err">Error</span>');
+          el('downloader-status-detail').innerHTML = '<span class="err">' + err.message + '</span>';
         }
       }
 
-      // Start download
-      document.getElementById('btn-download').addEventListener('click', async () => {
-        if (downloadRunning) return;
-
-        downloadRunning = true;
-        document.getElementById('btn-download').disabled = true;
-        document.getElementById('btn-download').textContent = currentLang === 'de' ? 'Download läuft...' : 'Downloading...';
-        document.getElementById('download-log').classList.remove('hidden');
-        document.getElementById('download-log').textContent = currentLang === 'de' ? 'Starte Download...\n' : 'Starting download...\n';
-
+      async function refreshSetupLog() {
         try {
-          const resp = await fetch('/api/setup/download', { method: 'POST' });
-          const data = await resp.json();
+          const data = await api('/api/setup/log');
+          const out = el('download-log');
+          out.innerHTML = normalizeLog(data.log || '');
+          out.scrollTop = out.scrollHeight;
 
-          if (data.error) {
-            document.getElementById('download-log').textContent += '\nERROR: ' + data.error;
-          }
-        } catch (e) {
-          document.getElementById('download-log').textContent += '\nERROR: ' + e.message;
-        }
-
-        // Start polling for log updates
-        pollInterval = setInterval(refreshLog, 2000);
-      });
-
-      // Refresh log
-      async function refreshLog() {
-        try {
-          const resp = await fetch('/api/setup/log');
-          const data = await resp.json();
-
-          const logEl = document.getElementById('download-log');
-          let logContent = data.log || '';
-
-          // Highlight OAuth links
-          logContent = logContent.replace(
-            /(https:\/\/[^\s]+auth[^\s]*)/gi,
-            '<a href="$1" target="_blank" class="oauth-link">$1</a>'
-          );
-
-          // Highlight errors
-          logContent = logContent.replace(
-            /ERROR:([^\n]*)/gi,
-            '<span class="error">ERROR:$1</span>'
-          );
-
-          // Highlight success
-          logContent = logContent.replace(
-            /(ERFOLGREICH|SUCCESSFUL|erfolgreich|successful)/gi,
-            '<span class="success">$1</span>'
-          );
-
-          logEl.innerHTML = logContent;
-          logEl.scrollTop = logEl.scrollHeight;
-
-          // Check if download completed
-          if (data.log && (data.log.includes('INSTALLATION ERFOLGREICH') || data.log.includes('INSTALLATION SUCCESSFUL'))) {
-            clearInterval(pollInterval);
+          const done = data.log && (data.log.includes('INSTALLATION ERFOLGREICH') || data.log.includes('INSTALLATION SUCCESSFUL'));
+          if (done && setupLogPoll) {
+            clearInterval(setupLogPoll);
+            setupLogPoll = null;
             downloadRunning = false;
             await checkStatus();
           }
 
-          // Check if download is still running
           if (!data.running && downloadRunning) {
             downloadRunning = false;
-            document.getElementById('btn-download').disabled = false;
-            document.getElementById('btn-download').innerHTML = currentLang === 'de'
+            el('btn-download').disabled = false;
+            el('btn-download').innerHTML = currentLang === 'de'
               ? '<span class="lang-de">Download starten</span><span class="lang-en hidden">Start Download</span>'
               : '<span class="lang-de hidden">Download starten</span><span class="lang-en">Start Download</span>';
-            updateLanguage();
+            setLang(currentLang);
           }
-        } catch (e) {
-          console.error('Log refresh failed:', e);
+        } catch (err) {
+          el('download-log').textContent = err.message;
         }
       }
 
-      document.getElementById('btn-refresh-log').addEventListener('click', refreshLog);
+      async function startDownload() {
+        if (downloadRunning) return;
+        downloadRunning = true;
+        el('btn-download').disabled = true;
+        el('btn-download').textContent = t('downloading');
+        el('download-log').textContent = currentLang === 'de' ? 'Starte Download...' : 'Starting download...';
 
-      // Initial check
-      checkStatus();
-      setInterval(checkStatus, 10000);
+        try {
+          const data = await api('/api/setup/download', { method: 'POST' });
+          if (data.error) el('download-log').textContent += '\nERROR: ' + data.error;
+          await refreshSetupLog();
+          if (setupLogPoll) clearInterval(setupLogPoll);
+          setupLogPoll = setInterval(refreshSetupLog, 2200);
+        } catch (err) {
+          downloadRunning = false;
+          el('btn-download').disabled = false;
+          el('btn-download').innerHTML = currentLang === 'de'
+            ? '<span class="lang-de">Download starten</span><span class="lang-en hidden">Start Download</span>'
+            : '<span class="lang-de hidden">Download starten</span><span class="lang-en">Start Download</span>';
+          setLang(currentLang);
+          el('download-log').textContent = err.message;
+        }
+      }
 
-      // Load settings on page load
-      loadSettings();
+      async function sendConsoleCommand(command) {
+        return await api('/api/console/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command })
+        });
+      }
 
-      // Load port mappings
-      loadPortMappings();
-    })();
+      async function refreshAuthLog() {
+        try {
+          const data = await api('/api/console/output');
+          const lines = Array.isArray(data.lines) ? data.lines.slice(-50) : [];
+          const content = normalizeLog(lines.join('\n'));
+          const node = el('auth-log');
+          node.innerHTML = content;
+          node.scrollTop = node.scrollHeight;
+        } catch (err) {
+          el('auth-log').textContent = err.message;
+        }
+      }
 
-    // Load and display port mappings
-    async function loadPortMappings() {
-      const loadingEl = document.getElementById('port-mappings-loading');
-      const mappingsEl = document.getElementById('port-mappings');
-      const errorEl = document.getElementById('port-mappings-error');
-      const tableBody = document.getElementById('port-table-body');
+      async function sendAuthCommand(mode) {
+        const authStatus = el('auth-status');
+        authStatus.className = 'muted-note';
+        authStatus.textContent = '/auth login ' + mode + ' ...';
 
-      try {
-        const resp = await fetch('/api/ports');
-        const data = await resp.json();
+        try {
+          const loginResult = await sendConsoleCommand('/auth login ' + mode);
+          if (!loginResult.ok) throw new Error(loginResult.error || 'login failed');
+          authStatus.className = 'muted-note ok';
+          authStatus.textContent = t('authStarted');
 
-        loadingEl.style.display = 'none';
+          await refreshAuthLog();
+          if (authLogPoll) clearInterval(authLogPoll);
+          authLogPoll = setInterval(refreshAuthLog, 2800);
 
-        if (data.available && data.mappings && data.mappings.length > 0) {
-          // Build port lookup
+          const timeoutAt = Date.now() + 120000;
+          const poll = setInterval(async () => {
+            try {
+              const st = await api('/api/auth/status');
+              if (st.token_configured) {
+                clearInterval(poll);
+                await sendConsoleCommand('/auth persistence Encrypted').catch(() => null);
+                authStatus.className = 'muted-note ok';
+                authStatus.textContent = t('authDone');
+                await refreshAuthLog();
+                await checkStatus();
+              } else if (Date.now() > timeoutAt) {
+                clearInterval(poll);
+                authStatus.className = 'muted-note warn';
+                authStatus.textContent = t('authPartial');
+              }
+            } catch (_) {
+              if (Date.now() > timeoutAt) clearInterval(poll);
+            }
+          }, 4000);
+        } catch (err) {
+          authStatus.className = 'muted-note err';
+          authStatus.textContent = err.message;
+        }
+      }
+
+      async function loadPortMappings() {
+        const tableBody = el('port-table-body');
+        const chip = el('ports-chip-status');
+        try {
+          const data = await api('/api/ports');
+          const services = [
+            { nameDe: 'Game Server', nameEn: 'Game Server', key: '5520/udp', internal: '5520/udp' },
+            { nameDe: 'Dashboard', nameEn: 'Dashboard', key: '8088/tcp', internal: '8088/tcp' },
+            { nameDe: 'Plugin API', nameEn: 'Plugin API', key: '5523/tcp', internal: '5523/tcp' }
+          ];
+
           const portLookup = {};
-          data.mappings.forEach(m => {
+          (data.mappings || []).forEach((m) => {
             portLookup[m.container] = m.host;
           });
 
-          // Service definitions
-          const services = [
-            { name: { de: '🎮 Game Server', en: '🎮 Game Server' }, internal: '5520/udp', key: '5520/udp' },
-            { name: { de: '🌐 Dashboard', en: '🌐 Dashboard' }, internal: '8088/tcp', key: '8088/tcp' },
-            { name: { de: '🔌 Plugin API', en: '🔌 Plugin API' }, internal: '5523/tcp', key: '5523/tcp' }
-          ];
+          const rows = services.map((s) => {
+            const ext = portLookup[s.key] || (data.internal_ports ? 'n/a' : '-');
+            const n = currentLang === 'de' ? s.nameDe : s.nameEn;
+            return '<tr>' +
+              '<td>' + n + '</td>' +
+              '<td><code>' + s.internal + '</code></td>' +
+              '<td><code>' + ext + '</code></td>' +
+              '</tr>';
+          }).join('');
 
-          let html = '';
-          services.forEach(s => {
-            const external = portLookup[s.key] || '-';
-            const highlight = s.key === '5520/udp' ? 'color: var(--green); font-weight: 600;' : '';
-            html += `<tr style="border-bottom: 1px solid var(--line);">
-              <td style="padding: 8px 0;">
-                <span class="lang-de">${s.name.de}</span>
-                <span class="lang-en hidden">${s.name.en}</span>
-              </td>
-              <td style="padding: 8px 0; font-family: monospace;">${s.internal}</td>
-              <td style="padding: 8px 0; font-family: monospace; ${highlight}">${external}</td>
-            </tr>`;
-          });
-
-          tableBody.innerHTML = html;
-          mappingsEl.style.display = 'block';
-        } else if (data.internal_ports) {
-          // Docker socket not available, show internal ports only
-          const services = [
-            { name: { de: '🎮 Game Server', en: '🎮 Game Server' }, internal: data.internal_ports.game },
-            { name: { de: '🌐 Dashboard', en: '🌐 Dashboard' }, internal: data.internal_ports.dashboard },
-            { name: { de: '🔌 Plugin API', en: '🔌 Plugin API' }, internal: data.internal_ports.api }
-          ];
-
-          let html = '';
-          services.forEach(s => {
-            html += `<tr style="border-bottom: 1px solid var(--line);">
-              <td style="padding: 8px 0;">
-                <span class="lang-de">${s.name.de}</span>
-                <span class="lang-en hidden">${s.name.en}</span>
-              </td>
-              <td style="padding: 8px 0; font-family: monospace;">${s.internal}</td>
-              <td style="padding: 8px 0; font-family: monospace; color: var(--muted);">
-                <span class="lang-de">nicht verfügbar</span>
-                <span class="lang-en hidden">unavailable</span>
-              </td>
-            </tr>`;
-          });
-
-          tableBody.innerHTML = html;
-          mappingsEl.style.display = 'block';
-          errorEl.style.display = 'block';
-        } else {
-          errorEl.style.display = 'block';
+          tableBody.innerHTML = rows || '<tr><td colspan="3" class="muted">No data</td></tr>';
+          chip.textContent = data.available ? 'docker socket OK' : 'socket unavailable';
+          chip.className = 'chip ' + (data.available ? 'ok' : 'warn');
+        } catch (err) {
+          tableBody.innerHTML = '<tr><td colspan="3" class="err">' + err.message + '</td></tr>';
+          chip.textContent = 'error';
+          chip.className = 'chip err';
         }
-      } catch (e) {
-        console.error('Failed to load port mappings:', e);
-        loadingEl.style.display = 'none';
-        errorEl.style.display = 'block';
       }
-    }
 
-    // Settings toggle
-    function toggleSettings() {
-      const content = document.getElementById('settings-content');
-      const toggle = document.getElementById('settings-toggle');
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-      } else {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
+      async function loadSettings() {
+        try {
+          const data = await api('/api/settings');
+          if (data.cf_api_key_set) {
+            el('cf-api-key').placeholder = '••••••••••••••••';
+          }
+          if (data.downloader_url) {
+            el('downloader-url').value = data.downloader_url;
+          }
+        } catch (_) {}
       }
-    }
 
-    // Load settings
-    async function loadSettings() {
-      try {
-        const resp = await fetch('/api/settings');
-        const data = await resp.json();
-        if (data.cf_api_key_set) {
-          document.getElementById('cf-api-key').placeholder = '••••••••••••••••';
-        }
-        if (data.downloader_url) {
-          document.getElementById('downloader-url').value = data.downloader_url;
-        }
-      } catch (e) {
-        console.error('Failed to load settings:', e);
-      }
-    }
+      async function saveSettings() {
+        const status = el('settings-status');
+        const body = {};
+        const cfKey = el('cf-api-key').value;
+        const dlUrl = el('downloader-url').value;
+        if (cfKey && cfKey !== '***') body.cf_api_key = cfKey;
+        if (dlUrl) body.downloader_url = dlUrl;
 
-    // Save settings
-    document.getElementById('btn-save-settings').addEventListener('click', async () => {
-      const status = document.getElementById('settings-status');
-      const cfKey = document.getElementById('cf-api-key').value;
-      const dlUrl = document.getElementById('downloader-url').value;
-
-      const body = {};
-      if (cfKey && cfKey !== '***') body.cf_api_key = cfKey;
-      if (dlUrl) body.downloader_url = dlUrl;
-
-      try {
-        const resp = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await resp.json();
-        if (data.ok) {
-          status.style.color = 'var(--green)';
-          status.textContent = '✓ Gespeichert / Saved';
-          document.getElementById('cf-api-key').value = '';
-          document.getElementById('cf-api-key').placeholder = '••••••••••••••••';
-        } else {
-          status.style.color = 'var(--red)';
-          status.textContent = '✗ ' + (data.error || 'Fehler / Error');
-        }
-      } catch (e) {
-        status.style.color = 'var(--red)';
-        status.textContent = '✗ ' + e.message;
-      }
-      setTimeout(() => { status.textContent = ''; }, 3000);
-    });
-
-    // Test CurseForge API key
-    document.getElementById('btn-test-cf').addEventListener('click', async () => {
-      const status = document.getElementById('settings-status');
-      status.style.color = 'var(--muted)';
-      status.textContent = 'Testing...';
-
-      try {
-        const resp = await fetch('/api/settings/cf-status');
-        const data = await resp.json();
-        if (data.valid) {
-          status.style.color = 'var(--green)';
-          status.textContent = '✓ ' + data.message;
-        } else {
-          status.style.color = 'var(--red)';
-          status.textContent = '✗ ' + data.message;
-        }
-      } catch (e) {
-        status.style.color = 'var(--red)';
-        status.textContent = '✗ ' + e.message;
-      }
-      setTimeout(() => { status.textContent = ''; }, 5000);
-    });
-
-    // Server Authentication - shared function
-    async function sendAuthCommand(method) {
-      const authLog = document.getElementById('auth-log');
-      const authStatus = document.getElementById('auth-status');
-      const loginCmd = '/auth login ' + method;
-      const persistenceCmd = '/auth persistence Encrypted';
-
-      authLog.style.display = 'block';
-      authLog.innerHTML = '<span>Sende ' + loginCmd + ' ...</span>';
-      authStatus.innerHTML = '';
-
-      try {
-        const sendCmd = async (cmd) => {
-          const resp = await fetch('/api/console/command', {
+        status.className = 'muted-note';
+        status.textContent = currentLang === 'de' ? 'Speichere...' : 'Saving...';
+        try {
+          const data = await api('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: cmd })
+            body: JSON.stringify(body)
           });
-          return await resp.json();
-        };
-
-        const loginResult = await sendCmd(loginCmd);
-        if (!loginResult.ok) {
-          authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + (loginResult.error || 'Login fehlgeschlagen') + '</span>';
-          return;
-        }
-
-        authStatus.innerHTML = '<span style="color: var(--green);">✓ Login gestartet. Warte auf Token ...</span>';
-        setTimeout(refreshAuthLog, 1500);
-        const logPoll = setInterval(refreshAuthLog, 3000);
-
-        const statusPoll = setInterval(async () => {
-          try {
-            const resp = await fetch('/api/auth/status');
-            const status = await resp.json();
-            if (status.token_configured) {
-              clearInterval(statusPoll);
-              clearInterval(logPoll);
-              const persistResult = await sendCmd(persistenceCmd);
-              if (persistResult.ok) {
-                authStatus.innerHTML = '<span style="color: var(--green);">✓ Token erhalten und Persistence gesetzt / Token received and persistence set</span>';
-              } else {
-                authStatus.innerHTML = '<span style="color: var(--yellow);">⚠ Token ok, Persistence bitte manuell setzen</span>';
-              }
-              setTimeout(refreshAuthLog, 1000);
-            }
-          } catch (e) {
-            console.error('Failed to check auth status:', e);
-          }
-        }, 4000);
-
-        setTimeout(() => {
-          clearInterval(statusPoll);
-          clearInterval(logPoll);
-        }, 120000);
-      } catch (e) {
-        authStatus.innerHTML = '<span style="color: var(--red);">✗ ' + e.message + '</span>';
-      }
-    }
-
-    document.getElementById('btn-auth-browser').addEventListener('click', () => sendAuthCommand('browser'));
-    document.getElementById('btn-auth-device').addEventListener('click', () => sendAuthCommand('device'));
-
-    // Refresh auth log
-    async function refreshAuthLog() {
-      const authLog = document.getElementById('auth-log');
-      try {
-        const resp = await fetch('/api/logs');
-        const data = await resp.json();
-        if (data.lines && data.lines.length > 0) {
-          let logContent = data.lines.slice(-30).join('\n');
-
-          // Highlight OAuth links
-          logContent = logContent.replace(
-            /(https:\/\/[^\s]+)/gi,
-            '<a href="$1" target="_blank" class="oauth-link" style="color: var(--accent);">$1</a>'
-          );
-
-          authLog.innerHTML = logContent;
-          authLog.scrollTop = authLog.scrollHeight;
-        }
-      } catch (e) {
-        console.error('Failed to refresh auth log:', e);
-      }
-    }
-
-    document.getElementById('btn-refresh-auth-log').addEventListener('click', refreshAuthLog);
-
-    // Tailscale toggle
-    function toggleTailscale() {
-      const content = document.getElementById('tailscale-content');
-      const toggle = document.getElementById('tailscale-toggle');
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-        loadTailscaleStatus();
-      } else {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-      }
-    }
-
-    // Load Tailscale status
-    async function loadTailscaleStatus() {
-      const statusText = document.getElementById('tailscale-status-text');
-      const ipDisplay = document.getElementById('tailscale-ip-display');
-      const actionStatus = document.getElementById('tailscale-action-status');
-      
-      try {
-        statusText.innerHTML = '<span class="lang-de">Wird geladen...</span><span class="lang-en hidden">Loading...</span>';
-        
-        const resp = await fetch('/api/tailscale/status');
-        const data = await resp.json();
-        
-        if (!data.enabled) {
-          statusText.innerHTML = '<span style="color: var(--muted);">⚫ <span class="lang-de">Nicht aktiviert</span><span class="lang-en hidden">Not enabled</span></span>';
-          ipDisplay.style.display = 'none';
-          actionStatus.textContent = '';
-        } else if (data.connected && data.backend_state === 'Running') {
-          statusText.innerHTML = '<span style="color: var(--green);">🟢 <span class="lang-de">Verbunden</span><span class="lang-en hidden">Connected</span></span>';
-          
-          // Try to get IP
-          const ipResp = await fetch('/api/tailscale/ip');
-          const ipData = await ipResp.json();
-          
-          if (ipData.ip) {
-            const hytalePort = ipData.hytale_port || '5520';
-            document.getElementById('tailscale-ip').textContent = ipData.ip;
-            document.getElementById('tailscale-connect-info').textContent = `${ipData.ip}:${hytalePort}`;
-            ipDisplay.style.display = 'block';
+          if (data.ok) {
+            status.className = 'muted-note ok';
+            status.textContent = currentLang === 'de' ? 'Gespeichert.' : 'Saved.';
+            el('cf-api-key').value = '';
+            el('cf-api-key').placeholder = '••••••••••••••••';
           } else {
+            throw new Error(data.error || 'failed');
+          }
+        } catch (err) {
+          status.className = 'muted-note err';
+          status.textContent = err.message;
+        }
+      }
+
+      async function testCfKey() {
+        const status = el('settings-status');
+        status.className = 'muted-note';
+        status.textContent = 'Testing...';
+        try {
+          const data = await api('/api/settings/cf-status');
+          if (data.valid) {
+            status.className = 'muted-note ok';
+            status.textContent = data.message || 'OK';
+          } else {
+            status.className = 'muted-note err';
+            status.textContent = data.message || 'Invalid';
+          }
+        } catch (err) {
+          status.className = 'muted-note err';
+          status.textContent = err.message;
+        }
+      }
+
+      async function loadTokenBackups() {
+        const body = el('token-table-body');
+        try {
+          const data = await api('/api/token/backups');
+          const list = Array.isArray(data.backups) ? data.backups : [];
+          if (!list.length) {
+            body.innerHTML = '<tr><td colspan="4" class="muted">' +
+              (currentLang === 'de' ? 'Keine Token-Backups vorhanden.' : 'No token backups found.') +
+              '</td></tr>';
+            return;
+          }
+          body.innerHTML = list.map((item) => {
+            return '<tr>' +
+              '<td><code>' + item.name + '</code></td>' +
+              '<td>' + (item.size || '-') + '</td>' +
+              '<td>' + (item.mtime || '-') + '</td>' +
+              '<td>' +
+                '<button class="btn-control btn-restore-token" data-name="' + item.name + '" style="padding:6px 10px; font-size:12px;">' +
+                (currentLang === 'de' ? 'Restore' : 'Restore') +
+                '</button>' +
+              '</td>' +
+              '</tr>';
+          }).join('');
+        } catch (err) {
+          body.innerHTML = '<tr><td colspan="4" class="err">' + err.message + '</td></tr>';
+        }
+      }
+
+      async function createTokenBackup() {
+        const status = el('token-status');
+        status.className = 'muted-note';
+        status.textContent = currentLang === 'de' ? 'Erstelle Backup...' : 'Creating backup...';
+        try {
+          const data = await api('/api/token/backup', { method: 'POST' });
+          status.className = 'muted-note ok';
+          status.textContent = (data.message || t('tokenBackupOk'));
+          await loadTokenBackups();
+          await checkStatus();
+        } catch (err) {
+          status.className = 'muted-note err';
+          status.textContent = err.message;
+        }
+      }
+
+      async function restoreTokenBackup(name) {
+        const status = el('token-status');
+        status.className = 'muted-note';
+        status.textContent = (currentLang === 'de' ? 'Restore läuft: ' : 'Restoring: ') + name;
+        try {
+          const data = await api('/api/token/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+          });
+          status.className = 'muted-note ok';
+          status.textContent = data.message || t('tokenRestoreOk');
+        } catch (err) {
+          status.className = 'muted-note warn';
+          if ((err.message || '').toLowerCase().includes('docker-modus')) {
+            status.textContent = t('tokenRestoreBlocked');
+          } else {
+            status.textContent = err.message;
+          }
+        }
+      }
+
+      function toggleCollapse(btnId, bodyId, arrowId) {
+        const btn = el(btnId);
+        const body = el(bodyId);
+        const arrow = el(arrowId);
+        btn.addEventListener('click', () => {
+          const open = body.style.display === 'block';
+          body.style.display = open ? 'none' : 'block';
+          arrow.textContent = open ? '▼' : '▲';
+        });
+      }
+
+      async function loadTailscaleStatus() {
+        const statusText = el('tailscale-status-text');
+        const ipDisplay = el('tailscale-ip-display');
+        try {
+          const data = await api('/api/tailscale/status');
+          if (!data.enabled) {
+            statusText.innerHTML = '<span class="warn">Tailscale disabled</span>';
+            ipDisplay.style.display = 'none';
+            return;
+          }
+          if (data.connected && data.backend_state === 'Running') {
+            statusText.innerHTML = '<span class="ok">Connected</span>';
+            const ipData = await api('/api/tailscale/ip');
+            if (ipData.ip) {
+              el('tailscale-ip').textContent = ipData.ip;
+              el('tailscale-connect-info').textContent = ipData.ip + ':' + (ipData.hytale_port || '5520');
+              ipDisplay.style.display = 'block';
+            } else {
+              ipDisplay.style.display = 'none';
+            }
+          } else {
+            statusText.innerHTML = '<span class="warn">Not connected</span>';
             ipDisplay.style.display = 'none';
           }
-        } else {
-          statusText.innerHTML = '<span style="color: var(--yellow);">🟡 <span class="lang-de">Nicht verbunden</span><span class="lang-en hidden">Not connected</span></span>';
+        } catch (err) {
+          statusText.innerHTML = '<span class="err">' + err.message + '</span>';
           ipDisplay.style.display = 'none';
         }
-      } catch (e) {
-        console.error('Failed to load Tailscale status:', e);
-        statusText.innerHTML = '<span style="color: var(--red);">❌ <span class="lang-de">Fehler</span><span class="lang-en hidden">Error</span></span>';
-        ipDisplay.style.display = 'none';
       }
-    }
 
-    // Refresh Tailscale status button
-    document.getElementById('btn-refresh-tailscale').addEventListener('click', loadTailscaleStatus);
-    
-    // Load Tailscale status on page load
-    loadTailscaleStatus();
+      function wireEvents() {
+        document.querySelectorAll('.lang-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            setLang(btn.dataset.lang || 'de');
+            loadPortMappings();
+            loadTokenBackups();
+          });
+        });
+
+        el('btn-download').addEventListener('click', startDownload);
+        el('btn-refresh-log').addEventListener('click', refreshSetupLog);
+
+        el('btn-auth-browser').addEventListener('click', () => sendAuthCommand('browser'));
+        el('btn-auth-device').addEventListener('click', () => sendAuthCommand('device'));
+        el('btn-refresh-auth-log').addEventListener('click', refreshAuthLog);
+
+        el('btn-save-settings').addEventListener('click', saveSettings);
+        el('btn-test-cf').addEventListener('click', testCfKey);
+
+        el('btn-token-backup').addEventListener('click', createTokenBackup);
+        el('btn-token-refresh').addEventListener('click', loadTokenBackups);
+        el('token-table-body').addEventListener('click', (evt) => {
+          const btn = evt.target.closest('.btn-restore-token');
+          if (!btn) return;
+          const name = btn.getAttribute('data-name');
+          if (name) restoreTokenBackup(name);
+        });
+
+        el('btn-refresh-tailscale').addEventListener('click', loadTailscaleStatus);
+
+        toggleCollapse('btn-toggle-settings', 'settings-content', 'settings-arrow');
+        toggleCollapse('btn-toggle-tailscale', 'tailscale-content', 'tailscale-arrow');
+      }
+
+      async function boot() {
+        wireEvents();
+        setLang('de');
+
+        await Promise.all([
+          checkStatus(),
+          refreshSetupLog(),
+          refreshAuthLog(),
+          loadPortMappings(),
+          loadSettings(),
+          loadTokenBackups(),
+          loadTailscaleStatus(),
+        ]);
+
+        setInterval(checkStatus, 10000);
+        setInterval(refreshAuthLog, 10000);
+      }
+
+      boot();
+    })();
   </script>
 </body>
 </html>

@@ -9,6 +9,7 @@ set -euo pipefail
 HYTALE_DIR="${HYTALE_DIR:-/opt/hytale-server}"
 SCREEN_NAME="hytale"
 COMMAND_FILE="${HYTALE_DIR}/.server_command"
+CONSOLE_PIPE="${HYTALE_DIR}/.console_pipe"
 CHECK_INTERVAL="${HYTALE_SETUP_WAIT_SECONDS:-5}"
 
 cd "$HYTALE_DIR"
@@ -28,37 +29,58 @@ fi
 touch "$COMMAND_FILE"
 chmod 660 "$COMMAND_FILE"
 
-AUTH_FILE="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_ROOT="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_SERVER="${HYTALE_DIR}/Server/auth.enc"
 AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
 LAST_TOKEN_SYNC=0
 
 sync_auth_token() {
-    if [[ -f "$AUTH_FILE" && ! -f "$AUTH_BACKUP" ]]; then
-        cp -f "$AUTH_FILE" "$AUTH_BACKUP" 2>/dev/null || true
-        chown hytale:hytale "$AUTH_BACKUP" 2>/dev/null || true
-        chmod 600 "$AUTH_BACKUP" 2>/dev/null || true
-    elif [[ ! -f "$AUTH_FILE" && -f "$AUTH_BACKUP" ]]; then
-        cp -f "$AUTH_BACKUP" "$AUTH_FILE" 2>/dev/null || true
-        chown hytale:hytale "$AUTH_FILE" 2>/dev/null || true
-        chmod 600 "$AUTH_FILE" 2>/dev/null || true
+    local src=""
+    if [[ -f "$AUTH_FILE_ROOT" ]]; then
+        src="$AUTH_FILE_ROOT"
+    elif [[ -f "$AUTH_FILE_SERVER" ]]; then
+        src="$AUTH_FILE_SERVER"
+    elif [[ -f "$AUTH_BACKUP" ]]; then
+        src="$AUTH_BACKUP"
+    fi
+
+    if [[ -n "$src" ]]; then
+        cp -f "$src" "$AUTH_FILE_ROOT" 2>/dev/null || true
+        cp -f "$src" "$AUTH_FILE_SERVER" 2>/dev/null || true
+        cp -f "$src" "$AUTH_BACKUP" 2>/dev/null || true
+        chown hytale:hytale "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
+        chmod 600 "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
     fi
 }
 
 # Function to send command to server
 send_command() {
+    if [ -p "$CONSOLE_PIPE" ]; then
+        printf '%s\n' "$1" > "$CONSOLE_PIPE"
+        echo "[wrapper] Sent command via pipe: $1"
+        return 0
+    fi
+
+    # Fallback for legacy sessions where pipe is unavailable.
     if screen -list | grep -q "$SCREEN_NAME"; then
         screen -S "$SCREEN_NAME" -p 0 -X stuff "$1\n"
-        echo "[wrapper] Sent command: $1"
-    else
-        echo "[wrapper] Server not running"
+        echo "[wrapper] Sent command via screen: $1"
+        return 0
     fi
+
+    echo "[wrapper] Server not running"
+    return 1
 }
 
 # Cleanup function
 cleanup() {
     echo "[wrapper] Shutting down server..."
     if screen -list | grep -q "$SCREEN_NAME"; then
-        screen -S "$SCREEN_NAME" -p 0 -X stuff "/stop\n"
+        if [ -p "$CONSOLE_PIPE" ]; then
+            printf '%s\n' "/stop" > "$CONSOLE_PIPE" || true
+        else
+            screen -S "$SCREEN_NAME" -p 0 -X stuff "/stop\n"
+        fi
         sleep 5
         screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
     fi

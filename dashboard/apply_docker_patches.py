@@ -303,6 +303,13 @@ async def api_console_send(request: Request, user: str = Depends(verify_credenti
     if not CONSOLE_PIPE.exists():'''
         content = content.replace(old_console_send, new_console_send)
 
+    # Patch token restore to allow restore in Docker mode
+    old_token_restore_guard = '''    if DOCKER_MODE:
+        raise HTTPException(status_code=400, detail="Token-Restore wird im Docker-Modus aktuell nicht unterstuetzt.")
+'''
+    if old_token_restore_guard in content:
+        content = content.replace(old_token_restore_guard, "")
+
     # Patch CF_API_KEY to use config file in Docker mode
     old_cf_key = 'CF_API_KEY = os.environ.get("CF_API_KEY", "")'
     if old_cf_key in content:
@@ -396,12 +403,16 @@ async def api_server_action(action: str, user: str = Depends(verify_credentials)
 # [DockerPatch] hard_log_console_overrides
 try:
     # Auto-detect container runtime without forcing developer/native systems.
+    if os.environ.get("HYTALE_DOCKER_MODE", "").lower() in ("1", "true", "yes"):
+        DOCKER_MODE = True
+
     if not DOCKER_MODE:
         _container_markers = [
             "/.dockerenv",
             "/run/.containerenv",
             "/var/run/supervisor.sock",
             "/etc/supervisor/conf.d/supervisord.conf",
+            "/proc/1/cgroup",
         ]
         if any(Path(m).exists() for m in _container_markers):
             DOCKER_MODE = True
@@ -425,6 +436,7 @@ try:
         _docker_get_logs = _dov.get_logs
         _docker_get_console_output = _dov.get_console_output
         _docker_get_server_control_commands = _dov.get_server_control_commands
+        _docker_send_console_command = getattr(_dov, "send_console_command", None)
         _docker_run_backup = _dov.run_backup
         _docker_restore_backup = getattr(_dov, "restore_backup", lambda *args, **kwargs: {"ok": False, "error": "Restore not available"})
         _docker_check_version = getattr(_dov, "check_version", lambda: {"current_version": "unknown", "latest_version": "unknown", "update_available": False, "docker_mode": True, "error": "version check unavailable"})
@@ -519,13 +531,13 @@ try:
             is_allowed, error_msg = should_allow_console_command(command)
             if not is_allowed:
                 raise HTTPException(status_code=400, detail=error_msg)
-            command_file = SERVER_DIR / ".server_command"
-            try:
-                with open(command_file, "a", encoding="utf-8") as f:
-                    f.write(command + "\\n")
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {exc}")
-            return {"ok": True, "command": command}
+
+            if _docker_send_console_command is None:
+                raise HTTPException(status_code=500, detail="Docker console adapter nicht verfuegbar")
+            ok, channel_or_error = _docker_send_console_command(command)
+            if not ok:
+                raise HTTPException(status_code=500, detail=f"Fehler beim Senden: {channel_or_error}")
+            return {"ok": True, "command": command, "channel": channel_or_error}
 
         async def _docker_api_auth_login_start(request: Request, user: str = Depends(verify_credentials)):
             if not ALLOW_CONTROL:
@@ -562,24 +574,47 @@ try:
                 "requesting auth grant",
                 "session service client initialized",
                 "server session token loaded",
+                "authentication successful",
             ])
-            missing_idx = _last_index(["no server tokens configured"])
-            error_idx = _last_index(["session token not available", "server authentication unavailable"])
+            missing_idx = _last_index([
+                "no server tokens configured",
+                "token source: not authenticated",
+                "session token: missing",
+            ])
+            error_idx = _last_index([
+                "session token not available",
+                "server authentication unavailable",
+            ])
             token_file_candidates = [
                 SERVER_DIR / "auth.enc",
+                SERVER_DIR / "Server" / "auth.enc",
                 SERVER_DIR / ".downloader" / "auth.enc",
             ]
             token_file_exists = any(p.exists() for p in token_file_candidates)
-            token_configured = token_file_exists or (success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx)
+            has_runtime_session = success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx
+            token_configured = token_file_exists
+            session_ready = has_runtime_session
 
             return JSONResponse({
                 "token_file_exists": token_file_exists,
-                "token_missing": (missing_idx > success_idx) and not token_file_exists,
-                "token_error": (error_idx > success_idx) and not token_file_exists,
+                "token_missing": (missing_idx > success_idx) and not has_runtime_session,
+                "token_error": (error_idx > success_idx) and not has_runtime_session,
                 "token_configured": token_configured,
-                "session_ready": token_configured,
+                "session_ready": session_ready,
                 "auth_lines": auth_lines,
             })
+
+        async def _docker_api_token_restore(request: Request, user: str = Depends(verify_credentials)):
+            if not ALLOW_CONTROL:
+                raise HTTPException(status_code=403, detail="Control-Aktionen deaktiviert.")
+            body = await request.json()
+            name = str(body.get("name", "")).strip()
+            if not name or Path(name).name != name or not name.endswith(".enc"):
+                raise HTTPException(status_code=400, detail="Ungueltiger Token-Backup Name.")
+            output, rc = run_cmd(with_optional_sudo([TOKEN_SCRIPT, "restore", name]), timeout=180)
+            if rc != 0:
+                raise HTTPException(status_code=500, detail=output or "Token-Restore fehlgeschlagen.")
+            return {"ok": True, "message": "Token wiederhergestellt und Server neu gestartet.", "output": output}
 
         _replace_route("/api/server/{action}", "POST", _docker_api_server_action)
         _replace_route("/api/backup/run", "POST", _docker_api_backup_run)
@@ -590,6 +625,7 @@ try:
         _replace_route("/api/console/send", "POST", _docker_api_console_send)
         _replace_route("/api/auth/login/start", "POST", _docker_api_auth_login_start)
         _replace_route("/api/auth/status", "GET", _docker_api_auth_status)
+        _replace_route("/api/token/restore", "POST", _docker_api_token_restore)
         _replace_route("/api/version/check", "POST", _docker_api_version_check)
         _replace_route("/api/update/run", "POST", _docker_api_update_run)
 
@@ -597,6 +633,67 @@ try:
 except Exception as e:
     print(f"[Dashboard] Warning: Docker hard overrides not applied: {e}")
 """
+
+    # Ensure auth status override stays up-to-date even if the hard override block
+    # already exists in app.py from a previous patch run.
+    auth_status_re = re.compile(
+        r'async def _docker_api_auth_status\(user: str = Depends\(verify_credentials\)\):\n'
+        r'(?:    .*\n)+?'
+        r'            "auth_lines": auth_lines,\n'
+        r'        \}\)\n',
+        re.MULTILINE,
+    )
+    auth_status_repl = '''async def _docker_api_auth_status(user: str = Depends(verify_credentials)):
+            lines = _docker_get_logs()
+            auth_lines = [ln for ln in lines if re.search(r"auth|token|session", ln, re.IGNORECASE)][-60:]
+            lower_lines = [ln.lower() for ln in auth_lines]
+
+            def _last_index(patterns: list[str]) -> int:
+                idx = -1
+                for i, ln in enumerate(lower_lines):
+                    if any(p in ln for p in patterns):
+                        idx = i
+                return idx
+
+            success_idx = _last_index([
+                "starting authenticated flow",
+                "identity token validated",
+                "requesting auth grant",
+                "session service client initialized",
+                "server session token loaded",
+                "authentication successful",
+            ])
+            missing_idx = _last_index([
+                "no server tokens configured",
+                "token source: not authenticated",
+                "session token: missing",
+            ])
+            error_idx = _last_index([
+                "session token not available",
+                "server authentication unavailable",
+            ])
+            token_file_candidates = [
+                SERVER_DIR / "auth.enc",
+                SERVER_DIR / "Server" / "auth.enc",
+                SERVER_DIR / ".downloader" / "auth.enc",
+            ]
+            token_file_exists = any(p.exists() for p in token_file_candidates)
+            has_runtime_session = success_idx >= 0 and success_idx > missing_idx and success_idx > error_idx
+            token_configured = token_file_exists
+            session_ready = has_runtime_session
+
+            return JSONResponse({
+                "token_file_exists": token_file_exists,
+                "token_missing": (missing_idx > success_idx) and not has_runtime_session,
+                "token_error": (error_idx > success_idx) and not has_runtime_session,
+                "token_configured": token_configured,
+                "session_ready": session_ready,
+                "auth_lines": auth_lines,
+            })
+'''
+    content, n_auth = auth_status_re.subn(auth_status_repl, content, count=1)
+    if n_auth == 0:
+        print("[patch] warning: _docker_api_auth_status replacement not applied")
 
     # Patch static app.js to render Tailscale status on dashboard main page.
     app_js = dashboard_dir / "static" / "app.js"

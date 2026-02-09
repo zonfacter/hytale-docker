@@ -132,6 +132,38 @@ def run_cmd(cmd: list[str], timeout: int = 10) -> tuple[str, int]:
         return str(e), 1
 
 
+def send_console_command(command: str) -> tuple[bool, str]:
+    """
+    Send a console command using the best available Docker channel.
+    Preferred channel is .server_command (wrapper polling), with FIFO fallback.
+    """
+    cmd = (command or "").strip()
+    if not cmd:
+        return False, "Kein Befehl angegeben."
+
+    command_file = SERVER_DIR / ".server_command"
+    console_pipe = SERVER_DIR / ".console_pipe"
+
+    try:
+        command_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(command_file, "a", encoding="utf-8") as f:
+            f.write(cmd + "\n")
+        return True, "server_command"
+    except Exception:
+        pass
+
+    # Compatibility fallback for older setups that still use FIFO directly.
+    try:
+        if console_pipe.exists():
+            with open(console_pipe, "w", encoding="utf-8") as f:
+                f.write(cmd + "\n")
+            return True, "console_pipe"
+    except Exception:
+        pass
+
+    return False, f"Kein Command-Channel verfuegbar ({command_file} / {console_pipe})"
+
+
 def get_service_status() -> dict:
     """Query supervisorctl for hytale-server status."""
     cmd = ["supervisorctl", "status", SERVICE_NAME]
@@ -447,97 +479,18 @@ def check_version() -> dict:
 def run_update() -> dict:
     """
     Run update in Docker.
-    Uses the hytale-downloader to download the latest server version.
+    Dashboard-triggered in-place updates are intentionally disabled in Docker mode.
+    Use image rebuild/recreate or setup download flow instead.
     """
-    import subprocess
-
-    downloader_dir = SERVER_DIR / ".downloader"
-    downloader_bin = downloader_dir / "hytale-downloader-linux-amd64"
-    download_script = downloader_dir / "download.sh"
-
-    if not downloader_bin.exists():
-        return {
-            "error": "Downloader not found",
-            "docker_mode": True,
-            "message": "Der Hytale Downloader wurde nicht gefunden. Bitte erst auf der Setup-Seite installieren."
-        }
-
-    # Get latest version first
-    latest_version = "unknown"
-    try:
-        result = subprocess.run(
-            [str(downloader_bin), "-print-version"],
-            cwd=str(downloader_dir),
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        if result.returncode == 0:
-            latest_version = result.stdout.strip()
-    except:
-        pass
-
-    # Run the download script (same as setup page)
-    if download_script.exists():
-        try:
-            log_file = SERVER_DIR / "logs" / "update.log"
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Run download in background and capture output
-            with open(log_file, "w") as f:
-                result = subprocess.run(
-                    ["/bin/bash", str(download_script)],
-                    cwd=str(downloader_dir),
-                    stdout=f,
-                    stderr=subprocess.STDOUT,
-                    timeout=600  # 10 minute timeout
-                )
-
-            if result.returncode == 0:
-                # Update the version file
-                try:
-                    version_file = SERVER_DIR / "last_version.txt"
-                    if latest_version != "unknown":
-                        version_file.write_text(latest_version)
-                except:
-                    pass
-
-                return {
-                    "error": None,
-                    "docker_mode": True,
-                    "version": latest_version,
-                    "message": f"Update auf Version {latest_version} erfolgreich! Server-Neustart empfohlen."
-                }
-            else:
-                log_content = ""
-                try:
-                    log_content = log_file.read_text()[-500:]  # Last 500 chars
-                except:
-                    pass
-                return {
-                    "error": f"Download failed with code {result.returncode}",
-                    "docker_mode": True,
-                    "log": log_content,
-                    "message": "Update fehlgeschlagen. Siehe Log für Details."
-                }
-        except subprocess.TimeoutExpired:
-            return {
-                "error": "Update timed out after 10 minutes",
-                "docker_mode": True,
-                "message": "Update-Timeout nach 10 Minuten."
-            }
-        except Exception as e:
-            return {
-                "error": str(e),
-                "docker_mode": True,
-                "message": f"Update-Fehler: {e}"
-            }
-    else:
-        return {
-            "error": "Download script not found",
-            "docker_mode": True,
-            "message": "Download-Script nicht gefunden. Setup-Seite prüfen."
-        }
+    return {
+        "error": "docker_update_disabled",
+        "docker_mode": True,
+        "message": (
+            "Direktes Dashboard-Update ist im Docker-Modus deaktiviert. "
+            "Bitte Image neu bauen/pullen und Container neu erstellen, "
+            "oder den Setup-Download nutzen."
+        ),
+    }
 
 
 def check_auto_update() -> None:
@@ -597,21 +550,51 @@ def get_players_from_logs() -> list[dict]:
 
 def get_console_output(since: str = "") -> list[str]:
     """
-    Get console output from log file instead of journalctl.
+    Get console output from active Docker log files.
+    Prefer the most recently updated source (wrapper.log/server.log),
+    with supervisor tail as fallback.
     """
-    log_file = LOG_DIR / "server.log"
     lines = []
 
-    if not log_file.exists():
-        return ["[Log file not found - server may not have started yet]"]
+    def _tail_supervisor(stream: str = "stdout", count: int = 200) -> list[str]:
+        output, rc = run_cmd(["supervisorctl", "tail", f"-{count}", SERVICE_NAME, stream], timeout=8)
+        if rc != 0 or not output:
+            return []
+        return [strip_ansi(line.rstrip()) for line in output.splitlines() if line.strip()]
 
-    try:
-        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-            all_lines = f.readlines()
-            # Return last 50 lines, strip ANSI codes
-            lines = [strip_ansi(line.rstrip()) for line in all_lines[-50:]]
-    except (PermissionError, OSError) as e:
-        lines = [f"[Error reading log: {e}]"]
+    def _tail_file(path: Path, count: int = 220) -> list[str]:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                raw = f.readlines()
+            return [strip_ansi(line.rstrip()) for line in raw[-count:] if line.strip()]
+        except (PermissionError, OSError):
+            return []
+
+    # Determine active log source by most recent modification time.
+    sources = [LOG_DIR / "wrapper.log", LOG_DIR / "server.log"]
+    existing_sources = [p for p in sources if p.exists()]
+    existing_sources.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+
+    if existing_sources:
+        primary = existing_sources[0]
+        secondary = existing_sources[1] if len(existing_sources) > 1 else None
+        primary_lines = _tail_file(primary, 220)
+        secondary_lines = _tail_file(secondary, 120) if secondary else []
+
+        # If primary log is sparse, enrich with secondary source.
+        if len(primary_lines) < 30 and secondary_lines:
+            lines = (secondary_lines + primary_lines)[-120:]
+        else:
+            lines = primary_lines[-120:]
+
+    # Supervisor fallback when file logs are empty/unavailable.
+    if not lines:
+        super_lines = _tail_supervisor("stdout", 220)
+        super_err = _tail_supervisor("stderr", 120)
+        lines = (super_lines + super_err)[-120:]
+
+    if not lines:
+        return ["[No console output available yet]"]
 
     return lines
 
