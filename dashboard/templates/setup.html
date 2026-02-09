@@ -844,7 +844,7 @@
 
       try {
         const sendCmd = async (cmd) => {
-          const resp = await fetch('/api/console/command', {
+          const resp = await fetch('/api/console/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ command: cmd })
