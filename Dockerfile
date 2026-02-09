@@ -80,7 +80,11 @@ RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gp
 # (the server runs from the Server/ subdirectory)
 RUN groupadd -g ${PGID} hytale && \
     useradd -u ${PUID} -g hytale -m -d ${HYTALE_DIR} -s /bin/bash hytale && \
-    mkdir -p ${HYTALE_DIR}/{backups,mods,Server/universe/worlds/default,.downloader,logs} && \
+    mkdir -p ${HYTALE_DIR}/backups \
+             ${HYTALE_DIR}/mods \
+             ${HYTALE_DIR}/Server/universe/worlds/default \
+             ${HYTALE_DIR}/.downloader \
+             ${HYTALE_DIR}/logs && \
     mkdir -p ${DASHBOARD_DIR} && \
     chown -R hytale:hytale ${HYTALE_DIR}
 
