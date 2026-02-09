@@ -479,97 +479,18 @@ def check_version() -> dict:
 def run_update() -> dict:
     """
     Run update in Docker.
-    Uses the hytale-downloader to download the latest server version.
+    Dashboard-triggered in-place updates are intentionally disabled in Docker mode.
+    Use image rebuild/recreate or setup download flow instead.
     """
-    import subprocess
-
-    downloader_dir = SERVER_DIR / ".downloader"
-    downloader_bin = downloader_dir / "hytale-downloader-linux-amd64"
-    download_script = downloader_dir / "download.sh"
-
-    if not downloader_bin.exists():
-        return {
-            "error": "Downloader not found",
-            "docker_mode": True,
-            "message": "Der Hytale Downloader wurde nicht gefunden. Bitte erst auf der Setup-Seite installieren."
-        }
-
-    # Get latest version first
-    latest_version = "unknown"
-    try:
-        result = subprocess.run(
-            [str(downloader_bin), "-print-version"],
-            cwd=str(downloader_dir),
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        if result.returncode == 0:
-            latest_version = result.stdout.strip()
-    except:
-        pass
-
-    # Run the download script (same as setup page)
-    if download_script.exists():
-        try:
-            log_file = SERVER_DIR / "logs" / "update.log"
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Run download in background and capture output
-            with open(log_file, "w") as f:
-                result = subprocess.run(
-                    ["/bin/bash", str(download_script)],
-                    cwd=str(downloader_dir),
-                    stdout=f,
-                    stderr=subprocess.STDOUT,
-                    timeout=600  # 10 minute timeout
-                )
-
-            if result.returncode == 0:
-                # Update the version file
-                try:
-                    version_file = SERVER_DIR / "last_version.txt"
-                    if latest_version != "unknown":
-                        version_file.write_text(latest_version)
-                except:
-                    pass
-
-                return {
-                    "error": None,
-                    "docker_mode": True,
-                    "version": latest_version,
-                    "message": f"Update auf Version {latest_version} erfolgreich! Server-Neustart empfohlen."
-                }
-            else:
-                log_content = ""
-                try:
-                    log_content = log_file.read_text()[-500:]  # Last 500 chars
-                except:
-                    pass
-                return {
-                    "error": f"Download failed with code {result.returncode}",
-                    "docker_mode": True,
-                    "log": log_content,
-                    "message": "Update fehlgeschlagen. Siehe Log für Details."
-                }
-        except subprocess.TimeoutExpired:
-            return {
-                "error": "Update timed out after 10 minutes",
-                "docker_mode": True,
-                "message": "Update-Timeout nach 10 Minuten."
-            }
-        except Exception as e:
-            return {
-                "error": str(e),
-                "docker_mode": True,
-                "message": f"Update-Fehler: {e}"
-            }
-    else:
-        return {
-            "error": "Download script not found",
-            "docker_mode": True,
-            "message": "Download-Script nicht gefunden. Setup-Seite prüfen."
-        }
+    return {
+        "error": "docker_update_disabled",
+        "docker_mode": True,
+        "message": (
+            "Direktes Dashboard-Update ist im Docker-Modus deaktiviert. "
+            "Bitte Image neu bauen/pullen und Container neu erstellen, "
+            "oder den Setup-Download nutzen."
+        ),
+    }
 
 
 def check_auto_update() -> None:
