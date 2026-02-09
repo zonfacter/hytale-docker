@@ -29,19 +29,27 @@ fi
 touch "$COMMAND_FILE"
 chmod 660 "$COMMAND_FILE"
 
-AUTH_FILE="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_ROOT="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_SERVER="${HYTALE_DIR}/Server/auth.enc"
 AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
 LAST_TOKEN_SYNC=0
 
 sync_auth_token() {
-    if [[ -f "$AUTH_FILE" && ! -f "$AUTH_BACKUP" ]]; then
-        cp -f "$AUTH_FILE" "$AUTH_BACKUP" 2>/dev/null || true
-        chown hytale:hytale "$AUTH_BACKUP" 2>/dev/null || true
-        chmod 600 "$AUTH_BACKUP" 2>/dev/null || true
-    elif [[ ! -f "$AUTH_FILE" && -f "$AUTH_BACKUP" ]]; then
-        cp -f "$AUTH_BACKUP" "$AUTH_FILE" 2>/dev/null || true
-        chown hytale:hytale "$AUTH_FILE" 2>/dev/null || true
-        chmod 600 "$AUTH_FILE" 2>/dev/null || true
+    local src=""
+    if [[ -f "$AUTH_FILE_ROOT" ]]; then
+        src="$AUTH_FILE_ROOT"
+    elif [[ -f "$AUTH_FILE_SERVER" ]]; then
+        src="$AUTH_FILE_SERVER"
+    elif [[ -f "$AUTH_BACKUP" ]]; then
+        src="$AUTH_BACKUP"
+    fi
+
+    if [[ -n "$src" ]]; then
+        cp -f "$src" "$AUTH_FILE_ROOT" 2>/dev/null || true
+        cp -f "$src" "$AUTH_FILE_SERVER" 2>/dev/null || true
+        cp -f "$src" "$AUTH_BACKUP" 2>/dev/null || true
+        chown hytale:hytale "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
+        chmod 600 "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
     fi
 }
 

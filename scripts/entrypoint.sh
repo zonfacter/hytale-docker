@@ -68,24 +68,27 @@ cp "$PERSISTENT_MACHINE_ID" /var/lib/dbus/machine-id 2>/dev/null || true
 echo "[entrypoint] Machine-id: $(cat $PERSISTENT_MACHINE_ID | head -c 8)..."
 
 
-# Token persistence sync (auth.enc <-> .downloader/auth.enc)
-AUTH_FILE="${HYTALE_DIR}/auth.enc"
+# Token persistence sync (auth.enc across root/server/.downloader)
+AUTH_FILE_ROOT="${HYTALE_DIR}/auth.enc"
+AUTH_FILE_SERVER="${HYTALE_DIR}/Server/auth.enc"
 AUTH_BACKUP="${HYTALE_DIR}/.downloader/auth.enc"
-if [ ! -f "$AUTH_FILE" ] && [ -f "$AUTH_BACKUP" ]; then
-    echo "[entrypoint] Restoring auth.enc from persistent .downloader"
-    cp -f "$AUTH_BACKUP" "$AUTH_FILE" || true
+
+AUTH_SOURCE=""
+if [ -f "$AUTH_FILE_ROOT" ]; then
+    AUTH_SOURCE="$AUTH_FILE_ROOT"
+elif [ -f "$AUTH_FILE_SERVER" ]; then
+    AUTH_SOURCE="$AUTH_FILE_SERVER"
+elif [ -f "$AUTH_BACKUP" ]; then
+    AUTH_SOURCE="$AUTH_BACKUP"
 fi
-if [ -f "$AUTH_FILE" ] && [ ! -f "$AUTH_BACKUP" ]; then
-    echo "[entrypoint] Saving auth.enc to persistent .downloader"
-    cp -f "$AUTH_FILE" "$AUTH_BACKUP" || true
-fi
-if [ -f "$AUTH_FILE" ]; then
-    chown hytale:hytale "$AUTH_FILE" || true
-    chmod 600 "$AUTH_FILE" || true
-fi
-if [ -f "$AUTH_BACKUP" ]; then
-    chown hytale:hytale "$AUTH_BACKUP" || true
-    chmod 600 "$AUTH_BACKUP" || true
+
+if [ -n "$AUTH_SOURCE" ]; then
+    echo "[entrypoint] Syncing auth token from: $AUTH_SOURCE"
+    cp -f "$AUTH_SOURCE" "$AUTH_FILE_ROOT" 2>/dev/null || true
+    cp -f "$AUTH_SOURCE" "$AUTH_FILE_SERVER" 2>/dev/null || true
+    cp -f "$AUTH_SOURCE" "$AUTH_BACKUP" 2>/dev/null || true
+    chown hytale:hytale "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
+    chmod 600 "$AUTH_FILE_ROOT" "$AUTH_FILE_SERVER" "$AUTH_BACKUP" 2>/dev/null || true
 fi
 
 # Setup Docker socket access for port mapping display

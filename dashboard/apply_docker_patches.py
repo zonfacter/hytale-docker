@@ -572,6 +572,7 @@ try:
             error_idx = _last_index(["session token not available", "server authentication unavailable"])
             token_file_candidates = [
                 SERVER_DIR / "auth.enc",
+                SERVER_DIR / "Server" / "auth.enc",
                 SERVER_DIR / ".downloader" / "auth.enc",
             ]
             token_file_exists = any(p.exists() for p in token_file_candidates)
