@@ -409,6 +409,24 @@ environment:
 - Backup management enhancements are now available in Docker builds (create/restore actions and seed handling from upstream dashboard).
 - Docker build remains reproducible via pinned submodule commit.
 
+## Release v2.0.0 (Current)
+
+This release introduces the Docker command adapter v2 architecture and stabilizes
+runtime behavior for Docker/NAS deployments.
+
+Key changes:
+- Fully redesigned Setup Cockpit (clearer setup/auth/token flow).
+- Console command delivery hardened via `.server_command` adapter.
+- Token backup/restore available in Docker mode.
+- Healthcheck switched to auth-free endpoint (`/api/setup/status`) for stable container health.
+- Docker update endpoint no longer blocks requests (`/api/update/run` returns immediate guidance).
+- Auth token path handling hardened across:
+  - `/opt/hytale-server/auth.enc`
+  - `/opt/hytale-server/Server/auth.enc`
+  - `/opt/hytale-server/.downloader/auth.enc`
+- Console output now prefers active runtime log sources.
+- Dockerfile initialization fixed for `/bin/sh` compatibility.
+
 ## Draft Release Download (v1.9.1)
 
 Ein Draft-Release mit Paketdateien wird unter GitHub Releases bereitgestellt.
@@ -498,6 +516,25 @@ The downloader is fetched automatically from `https://downloader.hytale.com/hyta
   1. Run `/auth login device` (or browser login) again.
   2. Run `/auth persistence Encrypted`.
   3. Create a fresh token backup and use that backup for future restores.
+
+### `/api/auth/status` says OK, but join still fails
+- Ground truth for runtime auth is the server-side command output from `/auth status`.
+- If `/auth status` reports:
+  - `Token Source: Not authenticated`
+  - `Session Token: Missing`
+  then players will be rejected even if token files exist on disk.
+- In this case, do a fresh device login and persist encrypted credentials:
+  1. `/auth login device`
+  2. `/auth persistence Encrypted`
+  3. Create a fresh token backup.
+
+### Update button behavior in Docker mode
+- In Docker mode, `/api/update/run` intentionally does **not** perform a long in-place updater run.
+- Expected behavior is an immediate response with Docker guidance.
+- Recommended update flow:
+  1. Pull/build new image.
+  2. Recreate container (`docker compose up -d --force-recreate`).
+  3. Verify setup/auth status after startup.
 
 ### Server won't start
 - Check logs: `docker-compose logs hytale`

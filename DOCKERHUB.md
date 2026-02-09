@@ -265,6 +265,17 @@ Dann öffne `http://localhost:8088/setup` im Browser.
    - Der Server startet automatisch
    - Dashboard erreichbar unter `http://localhost:8088`
 
+### Wichtige Hinweise (v2.0.0)
+
+- Das Dashboard-Update in Docker (`/api/update/run`) ist absichtlich nicht blockierend.
+  Verwende fuer Updates den Docker-Weg: neues Image bauen/pullen + Container neu erstellen.
+- Falls Token-Restore technisch erfolgreich ist, aber Spieler trotzdem abgewiesen werden:
+  - pruefe `/auth status` im Server
+  - bei `Token Source: Not authenticated` bitte neu anmelden:
+    1. `/auth login device`
+    2. `/auth persistence Encrypted`
+    3. neues Token-Backup erstellen
+
 ### Hinweis zu Token-Backup/Restore
 
 - Ein wiederhergestelltes `auth.enc` kann je nach Runtime-Umgebung ungueltig sein (z. B. nach Neuaufsetzen/Rebuild).
