@@ -136,7 +136,8 @@ for script in \
     "/usr/local/bin/hytale-server-wrapper.sh" \
     "/usr/local/bin/hytale-download.sh" \
     "/usr/local/bin/hytale-fetch-downloader.sh" \
-    "/usr/local/bin/tailscale-connect.sh"; do
+    "/usr/local/bin/tailscale-connect.sh" \
+    "/usr/local/sbin/hytale-token.sh"; do
     if [ -f "$script" ]; then
         # Normalize accidental CRLF line endings from NAS/editor workflows.
         sed -i 's/\r$//' "$script" 2>/dev/null || true
@@ -144,9 +145,9 @@ for script in \
 done
 
 chmod 750 "${HYTALE_DIR}/start.sh" 2>/dev/null || true
-chmod 755 /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh 2>/dev/null || true
+chmod 755 /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh 2>/dev/null || true
 chown hytale:hytale "${HYTALE_DIR}/start.sh" 2>/dev/null || true
-chown root:root /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh 2>/dev/null || true
+chown root:root /usr/local/bin/hytale-server-wrapper.sh /usr/local/bin/hytale-*.sh /usr/local/bin/tailscale-connect.sh /usr/local/sbin/hytale-token.sh 2>/dev/null || true
 
 # Verify start.sh is executable (critical for supervisord)
 if [ -f "${HYTALE_DIR}/start.sh" ]; then
