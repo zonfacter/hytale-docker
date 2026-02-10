@@ -68,6 +68,17 @@ Then open `http://localhost:8088/setup` in your browser.
    - The server starts automatically
    - Access the dashboard at `http://localhost:8088`
 
+### Important Notes (v2.0.0)
+
+- Docker mode uses the command adapter path (`/api/console/send`) and avoids host-native control paths.
+- Direct dashboard self-update (`/api/update/run`) is intentionally non-blocking in Docker mode.
+  For updates, use the Docker flow: pull/build a new image and recreate the container.
+- Token backup/restore copies `auth.enc`, but runtime authentication can still require a fresh login.
+  If players are rejected, verify runtime auth with `/auth status` in server console and re-login if needed:
+  1. `/auth login device`
+  2. `/auth persistence Encrypted`
+  3. create a fresh token backup
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -122,6 +133,21 @@ Example output:
 
 > **Important / Wichtig:** Since Hytale Server 2026.01, world data is stored in `Server/universe/` instead of `universe/`. / Seit Hytale Server 2026.01 werden Weltdaten in `Server/universe/` statt `universe/` gespeichert.
 
+### Troubleshooting (Docker)
+
+- `bash: line 1: ./start.sh: Permission denied`
+  - Fix ownership/permissions in container:
+    ```bash
+    docker exec -it hytale-server sh -lc 'sed -i "s/\r$//" /opt/hytale-server/start.sh /usr/local/bin/hytale-server-wrapper.sh 2>/dev/null || true; chmod 750 /opt/hytale-server/start.sh; chmod 755 /usr/local/bin/hytale-server-wrapper.sh; chown hytale:hytale /opt/hytale-server/start.sh; chown root:root /usr/local/bin/hytale-server-wrapper.sh'
+    ```
+- `Assets.zip` invalid / `zip END header not found`
+  - Re-extract from downloader cache:
+    ```bash
+    docker exec -it hytale-server sh -lc '[ -f /opt/hytale-server/.downloader/game.zip ] && unzip -o /opt/hytale-server/.downloader/game.zip -d /opt/hytale-server'
+    ```
+- Server starts but players are rejected (`Server session token not available`)
+  - Runtime auth is missing. Run auth flow again and persist encrypted credentials.
+
 ## Docker Compose
 
 ```yaml
@@ -159,6 +185,7 @@ services:
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest stable release |
+| `2.0.0`, `2.0`, `2` | Docker command adapter v2, setup cockpit redesign, token backup/restore UI, Docker-safe update flow |
 | `1.9.0`, `1.9` | Dashboard updated to `hytale-dashboard v1.5.0` + backup management improvements |
 | `1.8.0`, `1.8` | **BREAKING:** Universe path changed to `Server/universe/` (Hytale 2026.01 compatibility) |
 | `1.7.0`, `1.7` | Tailscale VPN integration |
@@ -228,7 +255,7 @@ Ein fertiges Docker-Image, das enthält:
 docker pull zonfacter/hytale-docker:latest
 
 # Daten-Verzeichnisse erstellen
-mkdir -p hytale-data/{universe,mods,backups,downloader}
+mkdir -p hytale-data/{server,universe,mods,backups,downloader}
 
 # Container starten
 # Hinweis: Universe-Pfad ist Server/universe/ seit Hytale Server 2026.01
@@ -237,6 +264,7 @@ docker run -d \
   -p 8088:8088 \
   -p 5520:5520/udp \
   -p 5523:5523 \
+  -v ./hytale-data/server:/opt/hytale-server/Server \
   -v ./hytale-data/universe:/opt/hytale-server/Server/universe \
   -v ./hytale-data/mods:/opt/hytale-server/mods \
   -v ./hytale-data/backups:/opt/hytale-server/backups \
@@ -330,6 +358,7 @@ Beispiel-Ausgabe:
 
 | Pfad | Beschreibung |
 |------|--------------|
+| `/opt/hytale-server/Server` | Server-Binaries/Laufzeit (verhindert Re-Download nach Updates) |
 | `/opt/hytale-server/Server/universe` | Weltdaten (Spieler, Gebäude) - **NEU in v1.8.0** |
 | `/opt/hytale-server/mods` | Installierte Mods |
 | `/opt/hytale-server/backups` | Backup-Dateien |
@@ -355,6 +384,8 @@ services:
       - CF_API_KEY=dein-curseforge-key
       - TZ=Europe/Berlin
     volumes:
+      # Server-Binaries/Laufzeit persistent halten, sonst Re-Download bei Recreate/Update
+      - ./data/server:/opt/hytale-server/Server
       # Hinweis: Universe-Pfad geändert in v1.8.0 zu Server/universe/
       - ./data/universe:/opt/hytale-server/Server/universe
       - ./data/mods:/opt/hytale-server/mods
@@ -372,6 +403,7 @@ services:
 | Tag | Beschreibung |
 |-----|--------------|
 | `latest` | Aktuellste stabile Version |
+| `2.0.0`, `2.0`, `2` | Docker Command Adapter v2, neu strukturierte Setup-Seite, Token-Backup/Restore UI, Docker-sicherer Update-Flow |
 | `1.9.0`, `1.9` | Dashboard aktualisiert auf `hytale-dashboard v1.5.0` + Verbesserungen in der Backup-Verwaltung |
 | `1.8.0`, `1.8` | **BREAKING:** Universe-Pfad geändert zu `Server/universe/` (Hytale 2026.01 Kompatibilität) |
 | `1.7.0`, `1.7` | Tailscale VPN Integration |
