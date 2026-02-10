@@ -69,11 +69,24 @@ RUN curl -fsSL https://tailscale.com/install.sh | sh
 # (ARGs before FROM are only available for the FROM instruction)
 ARG DEBIAN_CODENAME
 ARG JAVA_VERSION
-RUN curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb ${DEBIAN_CODENAME} main" > /etc/apt/sources.list.d/adoptium.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends temurin-${JAVA_VERSION}-jre \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg; \
+    echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb ${DEBIAN_CODENAME} main" > /etc/apt/sources.list.d/adoptium.list; \
+    installed=0; \
+    for attempt in 1 2 3 4 5; do \
+      if apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update \
+         && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 install -y --no-install-recommends temurin-${JAVA_VERSION}-jre; then \
+        installed=1; \
+        break; \
+      fi; \
+      echo "WARN: temurin-${JAVA_VERSION}-jre install attempt ${attempt}/5 failed; retrying..." >&2; \
+      sleep $((attempt * 5)); \
+    done; \
+    if [ "${installed}" -ne 1 ]; then \
+      echo "ERROR: failed to install temurin-${JAVA_VERSION}-jre after retries" >&2; \
+      exit 100; \
+    fi; \
+    rm -rf /var/lib/apt/lists/*
 
 # Create users and directories
 # Note: Since Hytale Server 2026.01, universe data is stored in Server/universe/
